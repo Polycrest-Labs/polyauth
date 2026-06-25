@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/sample/" />
+  <Folder Name="/sample/mcp-ui-host/">
+    <Project Path="sample/mcp-ui-host/McpUiHost.csproj" />
+  </Folder>
+  <Folder Name="/sample/web/">
+    <Project Path="sample/web/SampleWeb.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/PolyAuth/PolyAuth.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PolyAuth.IntegrationTests/PolyAuth.IntegrationTests.csproj" />
+    <Project Path="tests/PolyAuth.Tests/PolyAuth.Tests.csproj" />
+  </Folder>
+</Solution>

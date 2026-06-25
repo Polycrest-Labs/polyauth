@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <RootNamespace>PolyAuth</RootNamespace>
+    <AssemblyName>PolyAuth</AssemblyName>
+    <PackageId>PolyAuth</PackageId>
+    <Description>Reusable Firebase login + OAuth 2.1 Authorization Server + MCP authorization for .NET 10 apps.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="PolyAuth.Tests" />
+    <InternalsVisibleTo Include="PolyAuth.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenIddict.Server.AspNetCore" Version="7.5.0" />
+    <PackageReference Include="OpenIddict.Validation.AspNetCore" Version="7.5.0" />
+    <PackageReference Include="OpenIddict.Validation.ServerIntegration" Version="7.5.0" />
+    <PackageReference Include="OpenIddict.MongoDb" Version="7.5.0" />
+    <PackageReference Include="MongoDB.Driver" Version="3.9.0" />
+    <PackageReference Include="FirebaseAdmin" Version="3.5.0" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.4.0" />
+  </ItemGroup>
+
+</Project>

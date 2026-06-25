@@ -1,0 +1,444 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.40.2.10011",
+      "templateHash": "2132085442889519594"
+    }
+  },
+  "parameters": {
+    "environmentName": {
+      "type": "string",
+      "minLength": 1,
+      "metadata": {
+        "description": "Name of the azd environment, used to derive resource names"
+      }
+    },
+    "location": {
+      "type": "string",
+      "minLength": 1,
+      "metadata": {
+        "description": "Primary location for all resources"
+      }
+    },
+    "firebaseProjectId": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "firebaseApiKey": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "firebaseAuthDomain": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "firebaseAppId": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "firebaseServiceAccountB64": {
+      "type": "securestring",
+      "defaultValue": ""
+    },
+    "signingCertificateB64": {
+      "type": "securestring",
+      "defaultValue": ""
+    },
+    "encryptionCertificateB64": {
+      "type": "securestring",
+      "defaultValue": ""
+    }
+  },
+  "variables": {
+    "resourceToken": "[toLower(uniqueString(subscription().id, parameters('environmentName'), parameters('location')))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2024-03-01",
+      "name": "[format('rg-{0}', parameters('environmentName'))]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "azd-env-name": "[parameters('environmentName')]"
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "resources",
+      "resourceGroup": "[format('rg-{0}', parameters('environmentName'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "resourceToken": {
+            "value": "[variables('resourceToken')]"
+          },
+          "firebaseProjectId": {
+            "value": "[parameters('firebaseProjectId')]"
+          },
+          "firebaseApiKey": {
+            "value": "[parameters('firebaseApiKey')]"
+          },
+          "firebaseAuthDomain": {
+            "value": "[parameters('firebaseAuthDomain')]"
+          },
+          "firebaseAppId": {
+            "value": "[parameters('firebaseAppId')]"
+          },
+          "firebaseServiceAccountB64": {
+            "value": "[parameters('firebaseServiceAccountB64')]"
+          },
+          "signingCertificateB64": {
+            "value": "[parameters('signingCertificateB64')]"
+          },
+          "encryptionCertificateB64": {
+            "value": "[parameters('encryptionCertificateB64')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "17424975229853876293"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Resource group location"
+              }
+            },
+            "resourceToken": {
+              "type": "string",
+              "metadata": {
+                "description": "Token used to make resource names unique"
+              }
+            },
+            "firebaseProjectId": {
+              "type": "string"
+            },
+            "firebaseApiKey": {
+              "type": "string"
+            },
+            "firebaseAuthDomain": {
+              "type": "string"
+            },
+            "firebaseAppId": {
+              "type": "string"
+            },
+            "firebaseServiceAccountB64": {
+              "type": "securestring"
+            },
+            "signingCertificateB64": {
+              "type": "securestring"
+            },
+            "encryptionCertificateB64": {
+              "type": "securestring"
+            }
+          },
+          "variables": {
+            "webName": "[format('web-{0}', parameters('resourceToken'))]",
+            "mcpUiName": "[format('mcpui-{0}', parameters('resourceToken'))]",
+            "webUrl": "[format('https://{0}.azurewebsites.net', variables('webName'))]",
+            "mcpUiUrl": "[format('https://{0}.azurewebsites.net', variables('mcpUiName'))]",
+            "openIddictDatabaseName": "polyauth-openiddict",
+            "cosmosSqlDatabaseName": "polyauth-sample"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.OperationalInsights/workspaces",
+              "apiVersion": "2023-09-01",
+              "name": "[format('log-{0}', parameters('resourceToken'))]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "sku": {
+                  "name": "PerGB2018"
+                },
+                "retentionInDays": 30
+              }
+            },
+            {
+              "type": "Microsoft.Insights/components",
+              "apiVersion": "2020-02-02",
+              "name": "[format('appi-{0}', parameters('resourceToken'))]",
+              "location": "[parameters('location')]",
+              "kind": "web",
+              "properties": {
+                "Application_Type": "web",
+                "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', format('log-{0}', parameters('resourceToken')))]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', format('log-{0}', parameters('resourceToken')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts",
+              "apiVersion": "2024-11-15",
+              "name": "[format('mongo-{0}', parameters('resourceToken'))]",
+              "location": "[parameters('location')]",
+              "kind": "MongoDB",
+              "properties": {
+                "databaseAccountOfferType": "Standard",
+                "apiProperties": {
+                  "serverVersion": "7.0"
+                },
+                "capabilities": [
+                  {
+                    "name": "EnableServerless"
+                  }
+                ],
+                "consistencyPolicy": {
+                  "defaultConsistencyLevel": "Session"
+                },
+                "locations": [
+                  {
+                    "locationName": "[parameters('location')]",
+                    "failoverPriority": 0,
+                    "isZoneRedundant": false
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/mongodbDatabases",
+              "apiVersion": "2024-11-15",
+              "name": "[format('{0}/{1}', format('mongo-{0}', parameters('resourceToken')), variables('openIddictDatabaseName'))]",
+              "properties": {
+                "resource": {
+                  "id": "[variables('openIddictDatabaseName')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', format('mongo-{0}', parameters('resourceToken')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts",
+              "apiVersion": "2024-11-15",
+              "name": "[format('sql-{0}', parameters('resourceToken'))]",
+              "location": "[parameters('location')]",
+              "kind": "GlobalDocumentDB",
+              "properties": {
+                "databaseAccountOfferType": "Standard",
+                "capabilities": [
+                  {
+                    "name": "EnableServerless"
+                  }
+                ],
+                "consistencyPolicy": {
+                  "defaultConsistencyLevel": "Session"
+                },
+                "locations": [
+                  {
+                    "locationName": "[parameters('location')]",
+                    "failoverPriority": 0,
+                    "isZoneRedundant": false
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Web/serverfarms",
+              "apiVersion": "2024-04-01",
+              "name": "[format('plan-{0}', parameters('resourceToken'))]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "B1"
+              },
+              "kind": "linux",
+              "properties": {
+                "reserved": true
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2024-04-01",
+              "name": "[variables('webName')]",
+              "location": "[parameters('location')]",
+              "tags": {
+                "azd-service-name": "web"
+              },
+              "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', format('plan-{0}', parameters('resourceToken')))]",
+                "httpsOnly": true,
+                "siteConfig": {
+                  "linuxFxVersion": "DOTNETCORE|10.0",
+                  "alwaysOn": true,
+                  "ftpsState": "Disabled",
+                  "appSettings": [
+                    {
+                      "name": "ASPNETCORE_ENVIRONMENT",
+                      "value": "Production"
+                    },
+                    {
+                      "name": "PolyAuth__Firebase__Enabled",
+                      "value": "true"
+                    },
+                    {
+                      "name": "PolyAuth__Firebase__ProjectId",
+                      "value": "[parameters('firebaseProjectId')]"
+                    },
+                    {
+                      "name": "PolyAuth__Firebase__ServiceAccountJson",
+                      "value": "[base64ToString(parameters('firebaseServiceAccountB64'))]"
+                    },
+                    {
+                      "name": "PolyAuth__OAuth__Enabled",
+                      "value": "true"
+                    },
+                    {
+                      "name": "PolyAuth__OAuth__Issuer",
+                      "value": "[variables('webUrl')]"
+                    },
+                    {
+                      "name": "PolyAuth__OAuth__Store__ConnectionString",
+                      "value": "[listConnectionStrings(resourceId('Microsoft.DocumentDB/databaseAccounts', format('mongo-{0}', parameters('resourceToken'))), '2024-11-15').connectionStrings[0].connectionString]"
+                    },
+                    {
+                      "name": "PolyAuth__OAuth__Store__DatabaseName",
+                      "value": "[variables('openIddictDatabaseName')]"
+                    },
+                    {
+                      "name": "PolyAuth__OAuth__SigningCertificate__Base64",
+                      "value": "[parameters('signingCertificateB64')]"
+                    },
+                    {
+                      "name": "PolyAuth__OAuth__EncryptionCertificate__Base64",
+                      "value": "[parameters('encryptionCertificateB64')]"
+                    },
+                    {
+                      "name": "PolyAuth__Mcp__Enabled",
+                      "value": "true"
+                    },
+                    {
+                      "name": "PolyAuth__Mcp__McpBaseUrl",
+                      "value": "[variables('webUrl')]"
+                    },
+                    {
+                      "name": "PolyAuth__Mcp__WidgetHostBaseUrl",
+                      "value": "[variables('mcpUiUrl')]"
+                    },
+                    {
+                      "name": "UiClient__firebase__apiKey",
+                      "value": "[parameters('firebaseApiKey')]"
+                    },
+                    {
+                      "name": "UiClient__firebase__authDomain",
+                      "value": "[parameters('firebaseAuthDomain')]"
+                    },
+                    {
+                      "name": "UiClient__firebase__projectId",
+                      "value": "[parameters('firebaseProjectId')]"
+                    },
+                    {
+                      "name": "UiClient__firebase__appId",
+                      "value": "[parameters('firebaseAppId')]"
+                    },
+                    {
+                      "name": "CosmosDb__ConnectionString",
+                      "value": "[listConnectionStrings(resourceId('Microsoft.DocumentDB/databaseAccounts', format('sql-{0}', parameters('resourceToken'))), '2024-11-15').connectionStrings[0].connectionString]"
+                    },
+                    {
+                      "name": "CosmosDb__DatabaseId",
+                      "value": "[variables('cosmosSqlDatabaseName')]"
+                    },
+                    {
+                      "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+                      "value": "[reference(resourceId('Microsoft.Insights/components', format('appi-{0}', parameters('resourceToken'))), '2020-02-02').ConnectionString]"
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Insights/components', format('appi-{0}', parameters('resourceToken')))]",
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', format('mongo-{0}', parameters('resourceToken')))]",
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', format('sql-{0}', parameters('resourceToken')))]",
+                "[resourceId('Microsoft.Web/serverfarms', format('plan-{0}', parameters('resourceToken')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2024-04-01",
+              "name": "[variables('mcpUiName')]",
+              "location": "[parameters('location')]",
+              "tags": {
+                "azd-service-name": "mcp-ui"
+              },
+              "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', format('plan-{0}', parameters('resourceToken')))]",
+                "httpsOnly": true,
+                "siteConfig": {
+                  "linuxFxVersion": "DOTNETCORE|10.0",
+                  "alwaysOn": true,
+                  "ftpsState": "Disabled",
+                  "appSettings": [
+                    {
+                      "name": "ASPNETCORE_ENVIRONMENT",
+                      "value": "Production"
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', format('plan-{0}', parameters('resourceToken')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "WEB_URI": {
+              "type": "string",
+              "value": "[variables('webUrl')]"
+            },
+            "MCP_UI_URI": {
+              "type": "string",
+              "value": "[variables('mcpUiUrl')]"
+            },
+            "WEB_NAME": {
+              "type": "string",
+              "value": "[variables('webName')]"
+            },
+            "MCP_UI_NAME": {
+              "type": "string",
+              "value": "[variables('mcpUiName')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', format('rg-{0}', parameters('environmentName')))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "WEB_URI": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-{0}', parameters('environmentName'))), 'Microsoft.Resources/deployments', 'resources'), '2025-04-01').outputs.WEB_URI.value]"
+    },
+    "MCP_UI_URI": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-{0}', parameters('environmentName'))), 'Microsoft.Resources/deployments', 'resources'), '2025-04-01').outputs.MCP_UI_URI.value]"
+    },
+    "WEB_NAME": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-{0}', parameters('environmentName'))), 'Microsoft.Resources/deployments', 'resources'), '2025-04-01').outputs.WEB_NAME.value]"
+    },
+    "MCP_UI_NAME": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-{0}', parameters('environmentName'))), 'Microsoft.Resources/deployments', 'resources'), '2025-04-01').outputs.MCP_UI_NAME.value]"
+    }
+  }
+}

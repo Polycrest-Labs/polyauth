@@ -1,0 +1,41 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+artifacts/
+*.user
+
+# .NET
+*.nupkg
+
+# Node / Angular
+node_modules/
+dist/
+.angular/
+npm-debug.log*
+
+# azd / Azure
+.azure/
+
+# Secrets — NEVER commit
+testagent-letsgo-firebase-adminsdk.json
+**/serviceaccount*.json
+*.pfx
+*.p12
+secrets.json
+.env
+.env.*
+appsettings.*.local.json
+
+# Test artifacts
+TestResults/
+playwright-report/
+test-results/
+.playwright-mcp/
+*.trx
+
+# IDE
+.vs/
+.idea/
+*.swp
+sample/web/wwwroot
+sample/mcp-ui-host/wwwroot

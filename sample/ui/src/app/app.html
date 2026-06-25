@@ -1,0 +1,12 @@
+<header class="topbar">
+  <span class="brand">PolyAuth Sample</span>
+  @if (auth.isAuthenticated()) {
+    <nav>
+      <a routerLink="/items">Items</a>
+      <button type="button" (click)="signOut()">Sign out</button>
+    </nav>
+  }
+</header>
+<main class="content">
+  <router-outlet />
+</main>

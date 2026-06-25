@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+name: polyauth-sample
+metadata:
+  template: polyauth-sample@0.1
+services:
+  web:
+    project: ./web
+    language: dotnet
+    host: appservice
+    hooks:
+      prepackage:
+        shell: sh
+        run: cd ../ui && npm install --no-audit --no-fund && npm run buildprod
+        windows:
+          shell: pwsh
+          run: cd ../ui; npm install --no-audit --no-fund; npm run buildprod
+  mcp-ui:
+    project: ./mcp-ui-host
+    language: dotnet
+    host: appservice
+    hooks:
+      prepackage:
+        shell: sh
+        run: cd ../ui && npm install --no-audit --no-fund && npm run buildwidgets
+        windows:
+          shell: pwsh
+          run: cd ../ui; npm install --no-audit --no-fund; npm run buildwidgets

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": { "value": "${AZURE_ENV_NAME}" },
+    "location": { "value": "${AZURE_LOCATION}" },
+    "firebaseProjectId": { "value": "${FIREBASE_PROJECT_ID}" },
+    "firebaseApiKey": { "value": "${FIREBASE_API_KEY}" },
+    "firebaseAuthDomain": { "value": "${FIREBASE_AUTH_DOMAIN}" },
+    "firebaseAppId": { "value": "${FIREBASE_APP_ID}" },
+    "firebaseServiceAccountB64": { "value": "${FIREBASE_SERVICE_ACCOUNT_B64}" },
+    "signingCertificateB64": { "value": "${POLYAUTH_SIGNING_CERT_B64}" },
+    "encryptionCertificateB64": { "value": "${POLYAUTH_ENCRYPTION_CERT_B64}" }
+  }
+}
