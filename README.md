@@ -34,6 +34,7 @@ builder.Services.AddPolyAuthMcp(mcp => mcp.WithTools<MyAppTools>());   // your t
 
 app.UsePolyAuth();
 app.MapControllers();
+app.MapPolyAuthEndpoints();                          // /connect/authorize, /connect/logout, /api/oauth/session
 app.MapMcp("/mcp").RequireAuthorization(AuthPolicies.McpRead);
 ```
 
@@ -47,8 +48,10 @@ public sealed class MyController : ControllerBase
 }
 ```
 
-That is all the app writes — there is **no hand-written OpenIddict wiring** in the consuming app. The runnable
-proof is [`sample/web`](sample/web) (see below).
+**That is all the server writes — no hand-written OpenIddict wiring and no OAuth controllers.** The only
+app-side pieces are: (1) your MCP tool classes (`[McpServerToolType]`), and (2) a thin SPA `/sign-in` page
+(see the [front-end contract](docs/frontend-contract.md)). The runnable golden template is
+[`sample/web/Program.cs`](sample/web/Program.cs).
 
 ## Public API
 
@@ -56,13 +59,16 @@ proof is [`sample/web`](sample/web) (see below).
 |---|---|
 | `AddPolyAuth(IConfiguration, Action<PolyAuthOptions>?)` | Binds the `PolyAuth` config section, applies the delegate, and wires authentication + authorization + OpenIddict + the token-exchange grant + the baseline MCP-client handlers — only for providers whose `Enabled` is true. |
 | `UsePolyAuth()` | Middleware in the correct order: OAuth discovery aliases → protected-resource metadata → MCP resource-metadata challenge → `UseAuthentication` → `UseAuthorization`. No-op for disabled providers. |
+| `MapPolyAuthEndpoints()` | Maps the library-owned interactive endpoints: `/connect/authorize` (+ default consent page), `/connect/logout`, and (when Firebase is enabled) the Firebase→session-cookie bridge `POST /api/oauth/session`. No-op when OAuth is disabled. |
 | `AddPolyAuthMcp(Action<IMcpServerBuilder>)` | `AddMcpServer().WithHttpTransport()` + a tool-error request filter; the app supplies tools/resources via the delegate. |
 | `AuthScopes` | `api.read`, `api.write`, `mcp.read`, `mcp.write`. |
 | `AuthPolicies` | `ApiRead`, `ApiWrite`, `McpRead`, `McpWrite`, `FirebaseUser` (used with `[Authorize(Policy = …)]`). |
 | `AuthSchemes` | `Firebase`, `OAuthSession`, and the OpenIddict validation scheme. |
 | `PolyAuthConstants.FirebaseTokenExchangeGrantType` | `urn:polyauth:firebase`. |
 | `IAuthTestUserProvisioner` / `TestUser` | Get-or-create persistent E2E test user (never resets an existing password). |
-| `IPolyAuthPrincipalEnricher` | Optional hook to add app claims (e.g. an account id) to issued tokens. Default registration is a no-op. |
+| `IPolyAuthPrincipalEnricher` | Optional hook to add app claims (e.g. an account id) to issued tokens (Firebase exchange, client-credentials, and authorization-code grants). Default registration is a no-op. |
+| `IPolyAuthConsentRenderer` | Optional hook to replace the built-in third-party consent page with the app's own UI. Register it in DI; otherwise the default consent page is used. |
+| `OAuthServerOptions.SignInPath` | SPA route the authorize endpoint redirects unauthenticated users to (default `/sign-in`). |
 
 Options shape: `PolyAuthOptions { Firebase, OAuth, Mcp }` — see [`src/PolyAuth/PolyAuthOptions.cs`](src/PolyAuth/PolyAuthOptions.cs).
 
@@ -82,6 +88,7 @@ Options shape: `PolyAuthOptions { Firebase, OAuth, Mcp }` — see [`src/PolyAuth
       "AccessTokenLifetimeMinutes": 60,
       "RefreshTokenLifetimeDays": 14,
       "UiClientId": "polyauth-ui",
+      "SignInPath": "/sign-in",                                      // SPA route the authorize endpoint redirects to
       "EnableUrlClientMetadata": true,                               // ChatGPT DCR-by-URL (baseline ON)
       "EnableLoopbackRedirects": true,                               // Claude Desktop loopback (baseline ON)
       "EnableClientAssertion": false,                                // private_key_jwt — set true for ChatGPT (it uses private_key_jwt)
@@ -116,6 +123,33 @@ Options shape: `PolyAuthOptions { Firebase, OAuth, Mcp }` — see [`src/PolyAuth
 `DatabaseName` when OAuth is enabled, and (outside Development) `Issuer`, the signing/encryption certificates, and the
 Firebase service account. In **Development**, OpenIddict development certificates are used automatically and the
 transport-security requirement is relaxed.
+
+## What the consuming app provides
+Only two things beyond the calls above:
+1. **MCP tool classes** — `[McpServerToolType]` classes passed to `AddPolyAuthMcp(mcp => mcp.WithTools<MyTools>())`.
+2. **A SPA `/sign-in` page** implementing the [front-end contract](docs/frontend-contract.md): Firebase login →
+   token-exchange for the API, and the `POST /api/oauth/session` → `returnUrl` handoff for connector logins. A
+   complete Angular 22 reference is in [`sample/ui`](sample/ui).
+
+Everything else (authorize/consent/logout/session endpoints, discovery + MCP challenge, the grants, client
+seeding) is owned by the library.
+
+## Deploy notes (Azure App Service)
+- **Forwarded headers** — App Service terminates TLS, so the app sees `http` unless you honor `X-Forwarded-Proto`.
+  Call `app.UseForwardedHeaders(...)` (clearing `KnownProxies`/`KnownIPNetworks`) **before** `app.UsePolyAuth()`,
+  or OpenIddict's Production transport-security check rejects the OAuth endpoints. See `sample/web/Program.cs`.
+- **Certificates** — Development uses OpenIddict dev certs automatically. Production requires a signing **and** an
+  encryption cert via `Base64` or `Path`. Generate two self-signed certs with
+  [`scripts/generate-certs.ps1`](scripts/generate-certs.ps1) (or `.sh`); it prints the
+  `azd env set PolyAuth__OAuth__SigningCertificate__Base64 …` / `…EncryptionCertificate__Base64 …` lines.
+  Alternatively use an App Service **Key Vault reference**: set the app setting to
+  `@Microsoft.KeyVault(SecretUri=https://<vault>.vault.azure.net/secrets/<name>/)` (no code change).
+- **Store** — `PolyAuth:OAuth:Store:ConnectionString` is the Cosmos-for-Mongo (RU serverless) connection.
+- **Widget host** — `PolyAuth:Mcp:WidgetHostBaseUrl` is the separate static host serving the Angular MCP widget app.
+- **ChatGPT** — set `PolyAuth:OAuth:EnableClientAssertion=true`. ChatGPT's DCR-by-URL clients authenticate the token
+  exchange with `private_key_jwt`; without the client-assertion handlers the code exchange fails with
+  `invalid_client` ("token is not of the expected type", OpenIddict ID2089). Claude Desktop (public PKCE + loopback)
+  does not need it. See [`docs/mcpdocs.md`](docs/mcpdocs.md).
 
 ## Store: Azure Cosmos DB for MongoDB (RU serverless) — verified
 

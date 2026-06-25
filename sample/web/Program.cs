@@ -1,3 +1,10 @@
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+// CANONICAL PolyAuth integration sample (project-starter golden template).
+// A consuming app enables auth with config + MCP tool classes + a thin SPA /sign-in page only:
+//   AddPolyAuth(...) + AddPolyAuthMcp(...) + UsePolyAuth() + MapPolyAuthEndpoints() + MapMcp(...).
+// There are deliberately NO hand-written OAuth endpoints here — /connect/authorize, /connect/logout,
+// and /api/oauth/session are owned by the library (MapPolyAuthEndpoints). Keep this file in sync.
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
 using System.Text.Json.Serialization;
 using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Microsoft.Azure.Cosmos;
@@ -63,11 +70,11 @@ builder.Services.AddPolyAuthMcp(mcp => mcp
         var result = await next(request, ct);
         foreach (var tool in result.Tools)
         {
-            if (tool.Name is "list_items")
+            if (tool.Name is "list_items" or "add_item")
             {
                 var meta = PolyAuth.Mcp.McpWidgetHtmlBuilder.BuildToolMeta(SampleWidgetResources.ItemsWidgetTemplateUri);
-                meta["openai/toolInvocation/invoking"] = "Loading items…";
-                meta["openai/toolInvocation/invoked"] = "Loaded items.";
+                meta["openai/toolInvocation/invoking"] = tool.Name is "add_item" ? "Adding item…" : "Loading items…";
+                meta["openai/toolInvocation/invoked"] = tool.Name is "add_item" ? "Added item." : "Loaded items.";
                 tool.Meta = meta;
             }
         }
@@ -113,6 +120,9 @@ app.UseStaticFiles(new Microsoft.AspNetCore.Builder.StaticFileOptions
 app.UsePolyAuth();
 
 app.MapControllers();
+// Library-owned interactive OAuth endpoints (/connect/authorize, /connect/logout, /api/oauth/session) —
+// no hand-written OAuth controllers in the consuming app.
+app.MapPolyAuthEndpoints();
 app.MapHealthChecks("/health");
 
 // Runtime config for the SPA.

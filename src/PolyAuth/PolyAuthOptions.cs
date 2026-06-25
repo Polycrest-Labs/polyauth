@@ -60,6 +60,13 @@ public sealed class OAuthServerOptions
     /// <summary>The first-party UI client id permitted to use the Firebase token-exchange grant.</summary>
     public string UiClientId { get; set; } = "polyauth-ui";
 
+    /// <summary>
+    /// SPA route the library's <c>/connect/authorize</c> endpoint redirects unauthenticated users to.
+    /// The sign-in page must establish the OAuth session (POST <c>/api/oauth/session</c>) and then navigate
+    /// back to the supplied <c>returnUrl</c>. Default <c>/sign-in</c>.
+    /// </summary>
+    public string SignInPath { get; set; } = "/sign-in";
+
     /// <summary>Statically configured clients (e.g. loopback clients for Claude Desktop).</summary>
     public IList<OAuthStaticClientOptions> StaticClients { get; } = new List<OAuthStaticClientOptions>();
 

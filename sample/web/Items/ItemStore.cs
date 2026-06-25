@@ -53,8 +53,9 @@ public sealed class CosmosItemStore : IItemStore
 
     public async Task<IReadOnlyList<Item>> ListAsync(string ownerId, CancellationToken ct = default)
     {
-        var query = new QueryDefinition("SELECT * FROM c WHERE c.ownerId = @owner ORDER BY c.createdAt DESC")
-            .WithParameter("@owner", ownerId);
+        // No ORDER BY in the query (that would need a composite index under a non-default indexing
+        // policy); the per-user item count is tiny, so sort in memory instead.
+        var query = new QueryDefinition("SELECT * FROM c WHERE c.ownerId = @owner").WithParameter("@owner", ownerId);
         var iterator = _container.GetItemQueryIterator<Item>(
             query, requestOptions: new QueryRequestOptions { PartitionKey = new PartitionKey(ownerId) });
 
@@ -67,7 +68,7 @@ public sealed class CosmosItemStore : IItemStore
             }
         }
 
-        return results;
+        return results.OrderByDescending(i => i.CreatedAt).ToList();
     }
 
     public async Task<Item> CreateAsync(string ownerId, string title, CancellationToken ct = default)

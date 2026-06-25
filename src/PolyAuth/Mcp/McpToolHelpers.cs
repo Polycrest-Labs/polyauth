@@ -69,5 +69,5 @@ public static class McpToolHelpers
     }
 
     private static bool IsValidationException(Exception exception)
-        => exception.GetType().Name == "ValidationException";
+        => exception.GetType().FullName == "FluentValidation.ValidationException";
 }

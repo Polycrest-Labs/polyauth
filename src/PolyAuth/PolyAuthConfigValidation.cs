@@ -55,11 +55,5 @@ internal static class PolyAuthConfigValidation
                     "PolyAuth resource indicators could not be built. Configure PolyAuth:OAuth:Issuer or PolyAuth:Mcp:McpBaseUrl with the public HTTPS base URL.");
             }
         }
-
-        if (options.Firebase.Enabled && string.IsNullOrWhiteSpace(options.Firebase.ServiceAccountJson) && !isDevelopment)
-        {
-            throw new InvalidOperationException(
-                "PolyAuth:Firebase:ServiceAccountJson is required for the Firebase token-exchange grant.");
-        }
     }
 }

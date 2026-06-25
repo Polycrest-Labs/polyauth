@@ -6,7 +6,8 @@ namespace PolyAuth;
 public enum PrincipalEnrichmentGrant
 {
     FirebaseTokenExchange,
-    ClientCredentials
+    ClientCredentials,
+    AuthorizationCode
 }
 
 /// <summary>Context handed to <see cref="IPolyAuthPrincipalEnricher"/> before tokens are issued.</summary>

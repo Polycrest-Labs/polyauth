@@ -1,6 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, signOut, Auth, User } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, Auth, User } from 'firebase/auth';
 import { APP_CONFIG } from '../runtime-config';
 
 interface TokenResponse {
@@ -23,10 +23,39 @@ export class AuthService {
   readonly isAuthenticated = computed(() => this.user() !== null && this.token() !== null);
   readonly error = signal<string | null>(null);
 
+  // Resolves after the first Firebase auth-state callback, so a page refresh can restore the session
+  // before the route guard decides whether to allow a protected route.
+  private resolveReady!: () => void;
+  private readonly ready = new Promise<void>((resolve) => (this.resolveReady = resolve));
+
   constructor() {
     const config = APP_CONFIG.value.firebase;
     this.app = getApps().length > 0 ? getApps()[0] : initializeApp(config);
     this.auth = getAuth(this.app);
+
+    onAuthStateChanged(this.auth, async (firebaseUser) => {
+      try {
+        if (firebaseUser && this.token() === null) {
+          // Firebase restored a session on reload — re-obtain an OAuth token for the API.
+          await this.exchangeFirebaseToken();
+          this.user.set(firebaseUser);
+        } else if (!firebaseUser) {
+          this.user.set(null);
+          this.token.set(null);
+        }
+      } catch {
+        this.user.set(null);
+        this.token.set(null);
+      } finally {
+        this.resolveReady();
+      }
+    });
+  }
+
+  /** Awaits the initial Firebase auth-state restore, then reports whether the user is authenticated. */
+  async waitUntilReady(): Promise<boolean> {
+    await this.ready;
+    return this.isAuthenticated();
   }
 
   async login(email: string, password: string): Promise<void> {
