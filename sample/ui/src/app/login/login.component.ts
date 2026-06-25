@@ -10,17 +10,22 @@ import { AuthService } from '../auth/auth.service';
   template: `
     <section class="card">
       <h1>Sign in</h1>
-      <form (ngSubmit)="submit()">
-        <label for="email">Email</label>
-        <input id="email" name="email" type="email" autocomplete="username" [(ngModel)]="email" required />
+      @if (auth.configError(); as cfg) {
+        <p class="error" role="alert">{{ cfg }}</p>
+        <p class="muted">The app is deployed but Firebase isn't wired up yet — set the Firebase web config in <code>/config.json</code>.</p>
+      } @else {
+        <form (ngSubmit)="submit()">
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" autocomplete="username" [(ngModel)]="email" required />
 
-        <label for="password">Password</label>
-        <input id="password" name="password" type="password" autocomplete="current-password" [(ngModel)]="password" required />
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" [(ngModel)]="password" required />
 
-        <button type="submit" [disabled]="busy()">{{ busy() ? 'Signing in…' : 'Sign in' }}</button>
-      </form>
-      @if (auth.error(); as err) {
-        <p class="error" role="alert">{{ err }}</p>
+          <button type="submit" [disabled]="busy()">{{ busy() ? 'Signing in…' : 'Sign in' }}</button>
+        </form>
+        @if (auth.error(); as err) {
+          <p class="error" role="alert">{{ err }}</p>
+        }
       }
     </section>
   `,
@@ -32,6 +37,8 @@ import { AuthService } from '../auth/auth.service';
     button { margin-top: 18px; width: 100%; padding: 10px; border: 0; border-radius: 6px; background: #1d4ed8; color: #fff; font-weight: 650; cursor: pointer; }
     button:disabled { opacity: .6; cursor: default; }
     .error { color: #b91c1c; margin-top: 14px; }
+    .muted { color: #475569; margin-top: 8px; font-size: .9rem; }
+    code { background: #f1f5f9; padding: 1px 4px; border-radius: 4px; }
   `],
 })
 export class LoginComponent {
