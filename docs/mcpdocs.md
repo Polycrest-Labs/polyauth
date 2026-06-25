@@ -41,10 +41,12 @@ Claude Desktop uses a statically configured client (`OAuth.StaticClients`) with
 `http://localhost:<port>/<allowed-path>` redirect URIs and materializes them on the authorization request
 (`EnableLoopbackRedirects`, baseline ON).
 
-Both MCP clients then run **authorization code + PKCE**, the user signs in (the app's `/connect/authorize`
-passthrough establishes an `OAuthSession` from a Firebase login and shows a consent screen for third-party clients),
-and the client exchanges the code for an `mcp.read` / `mcp.write` token at `/connect/token`. It calls `/mcp` with
-that bearer token; `MapMcp("/mcp").RequireAuthorization(AuthPolicies.McpRead)` enforces the scope.
+Both MCP clients then run **authorization code + PKCE**. The library's `/connect/authorize` endpoint (mapped by
+`MapPolyAuthEndpoints`) redirects the user to the SPA `/sign-in` page (`OAuth.SignInPath`), which establishes the
+`OAuthSession` cookie from a Firebase login via `POST /api/oauth/session`; third-party clients then get the
+library's built-in consent screen (auto-consented for the first-party UI client). The client exchanges the code
+for an `mcp.read` / `mcp.write` token at `/connect/token`, then calls `/mcp` with that bearer token;
+`MapMcp("/mcp").RequireAuthorization(AuthPolicies.McpRead)` enforces the scope.
 
 ## Discovery / metadata endpoints (served by `UsePolyAuth`)
 - `/.well-known/oauth-authorization-server` (+ `/openid-configuration`) — OpenIddict AS metadata, plus the
@@ -58,17 +60,27 @@ that bearer token; `MapMcp("/mcp").RequireAuthorization(AuthPolicies.McpRead)` e
 1. Add the `PolyAuth` config section (see the README schema). Provide the Cosmos-for-Mongo connection string, the
    issuer, and signing/encryption certificates (or run in Development for dev certs).
 2. `builder.Services.AddPolyAuth(config, o => { o.Firebase.Enabled = true; o.OAuth.Enabled = true; o.Mcp.Enabled = true; });`
+   (set `o.OAuth.EnableClientAssertion = true` if you want ChatGPT connectors — see the note above).
 3. `builder.Services.AddPolyAuthMcp(mcp => mcp.WithTools<YourTools>().WithResources<YourWidgets>());`
-4. `app.UsePolyAuth(); app.MapControllers(); app.MapMcp("/mcp").RequireAuthorization(AuthPolicies.McpRead);`
+4. `app.UsePolyAuth(); app.MapControllers(); app.MapPolyAuthEndpoints(); app.MapMcp("/mcp").RequireAuthorization(AuthPolicies.McpRead);`
 5. Write MCP tools as `[McpServerToolType]` classes; tool exceptions are mapped to user-facing errors by the
    library's tool-error filter (see `McpToolHelpers`). For ChatGPT/MCP-App widgets, host a small Angular widget app
    on a separate static host and build the resource HTML with `McpWidgetHtmlBuilder` keyed off
    `Mcp.WidgetHostBaseUrl`.
+6. Add a thin SPA `/sign-in` page implementing the [front-end contract](frontend-contract.md) (Firebase login →
+   token-exchange for the API, and the `POST /api/oauth/session` → `returnUrl` handoff for connector logins).
 
-## Authorize endpoint (app responsibility)
-Because the interactive sign-in UI is app-specific, the consuming app provides the `/connect/authorize` passthrough
-controller and a `/api/oauth/session` login that establishes the `OAuthSession` cookie from a verified Firebase login.
-See [`sample/web/OAuth`](../sample/web/OAuth) for a complete, generic implementation you can copy.
+## Authorize / consent / session endpoints (library-owned)
+`MapPolyAuthEndpoints()` maps the entire interactive surface — there is **no hand-written OAuth code in the app**:
+- `/connect/authorize` — redirects unauthenticated users to `OAuth.SignInPath`, auto-consents the first-party UI
+  client, and shows a built-in consent page for third-party clients (override it by registering an
+  `IPolyAuthConsentRenderer` in DI), then issues the code via OpenIddict's passthrough.
+- `/connect/logout` — clears the `OAuthSession` cookie and the OpenIddict session.
+- `POST /api/oauth/session` — the Firebase ID-token → `OAuthSession` cookie bridge (mapped only when Firebase is
+  enabled).
+
+The only app-side responsibility is the SPA `/sign-in` page (see the [front-end contract](frontend-contract.md));
+[`sample/web/Program.cs`](../sample/web/Program.cs) is the canonical, controller-free integration template.
 
 ## Connecting a real MCP client
 - **ChatGPT** (developer mode / connectors): add a connector pointing at `https://<your-api>/mcp`. ChatGPT discovers

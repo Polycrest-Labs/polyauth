@@ -78,9 +78,10 @@ public static class PolyAuthEndpointRouteBuilderExtensions
         }
 
         var isThirdParty = !string.Equals(request.ClientId, oauth.UiClientId, StringComparison.Ordinal);
-        if (isThirdParty && !IsConsentApproved(http.Request))
+        var consentAction = ConsentAction(http.Request);
+        if (isThirdParty && consentAction != "approve")
         {
-            if (IsConsentDenied(http.Request))
+            if (consentAction == "deny")
             {
                 return Forbid(OpenIddictConstants.Errors.AccessDenied, "The authorization request was denied.");
             }
@@ -144,13 +145,11 @@ public static class PolyAuthEndpointRouteBuilderExtensions
             }),
             [OpenIddictServerAspNetCoreDefaults.AuthenticationScheme]);
 
-    private static bool IsConsentApproved(HttpRequest request)
+    // "approve" / "deny", or null on a GET or a POST without the form action.
+    private static string? ConsentAction(HttpRequest request)
         => HttpMethods.IsPost(request.Method) && request.HasFormContentType
-           && string.Equals(request.Form["consent_action"], "approve", StringComparison.Ordinal);
-
-    private static bool IsConsentDenied(HttpRequest request)
-        => HttpMethods.IsPost(request.Method) && request.HasFormContentType
-           && string.Equals(request.Form["consent_action"], "deny", StringComparison.Ordinal);
+            ? request.Form["consent_action"].ToString()
+            : null;
 
     private static async Task<IResult> RenderConsentAsync(
         HttpContext http, IOpenIddictApplicationManager applicationManager, OpenIddictRequest request)
