@@ -1,8 +1,6 @@
 using System.ComponentModel;
 using System.Security.Claims;
-using System.Text.Json;
 using Microsoft.AspNetCore.Http;
-using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using PolyAuth;
 using Sample.Web.Items;
@@ -35,15 +33,15 @@ public sealed class SampleTools
     [McpServerTool(Name = "ping"), Description("Health check that echoes back the provided message.")]
     public string Ping([Description("A message to echo.")] string message = "pong") => message;
 
-    [McpServerTool(Name = "list_items"), Description("List the authenticated user's items. Requires mcp.read.")]
-    public async Task<CallToolResult> ListItems(CancellationToken ct)
-        // Emit structuredContent ({ items: [...] }) — ChatGPT/MCP-App widgets receive this as
-        // window.openai.toolOutput; a bare return only produces a text block (structuredContent=null)
-        // and the widget renders empty.
-        => ItemsResult(await _store.ListAsync(UserId, ct));
+    // UseStructuredContent = true makes the SDK emit an output schema (clears ChatGPT's
+    // "Output schema recommended") AND populate structuredContent for the widget — provided the
+    // return is a concrete typed record (here ItemListResult), not object/CallToolResult/bare array.
+    [McpServerTool(Name = "list_items", UseStructuredContent = true), Description("List the authenticated user's items. Requires mcp.read.")]
+    public async Task<ItemListResult> ListItems(CancellationToken ct)
+        => new(await _store.ListAsync(UserId, ct));
 
-    [McpServerTool(Name = "add_item"), Description("Create an item for the authenticated user. Requires mcp.write.")]
-    public async Task<CallToolResult> AddItem([Description("The item title.")] string title, CancellationToken ct)
+    [McpServerTool(Name = "add_item", UseStructuredContent = true), Description("Create an item for the authenticated user. Requires mcp.write.")]
+    public async Task<ItemListResult> AddItem([Description("The item title.")] string title, CancellationToken ct)
     {
         if (!ScopeAuthorization.HasScope(User, AuthScopes.McpWrite))
         {
@@ -57,16 +55,10 @@ public sealed class SampleTools
 
         await _store.CreateAsync(UserId, title.Trim(), ct);
         // Return the refreshed list so the bound items widget reflects the new item.
-        return ItemsResult(await _store.ListAsync(UserId, ct));
-    }
-
-    private static CallToolResult ItemsResult(IReadOnlyList<Item> items)
-    {
-        var payload = new { items };
-        return new CallToolResult
-        {
-            Content = [new TextContentBlock { Text = JsonSerializer.Serialize(payload, JsonSerializerOptions.Web) }],
-            StructuredContent = JsonSerializer.SerializeToElement(payload, JsonSerializerOptions.Web)
-        };
+        return new ItemListResult(await _store.ListAsync(UserId, ct));
     }
 }
+
+/// <summary>Typed tool result so the SDK can generate an output schema and structuredContent.
+/// Serializes camelCase as { items: [...] } — the shape the mcp-ui widget reads (output.items).</summary>
+public sealed record ItemListResult(IReadOnlyList<Item> Items);

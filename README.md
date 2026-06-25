@@ -141,7 +141,8 @@ seeding) is owned by the library.
 - **Certificates** — Development uses OpenIddict dev certs automatically. Production requires a signing **and** an
   encryption cert via `Base64` or `Path`. Generate two self-signed certs with
   [`scripts/generate-certs.ps1`](scripts/generate-certs.ps1) (or `.sh`); it prints the
-  `azd env set PolyAuth__OAuth__SigningCertificate__Base64 …` / `…EncryptionCertificate__Base64 …` lines.
+  `azd env set POLYAUTH_SIGNING_CERT_B64 …` / `azd env set POLYAUTH_ENCRYPTION_CERT_B64 …` lines, which
+  `sample/infra/main.parameters.json` maps to the `PolyAuth__OAuth__*Certificate__Base64` app settings.
   Alternatively use an App Service **Key Vault reference**: set the app setting to
   `@Microsoft.KeyVault(SecretUri=https://<vault>.vault.azure.net/secrets/<name>/)` (no code change).
 - **Store** — `PolyAuth:OAuth:Store:ConnectionString` is the Cosmos-for-Mongo (RU serverless) connection.

@@ -58,6 +58,16 @@ public sealed class McpStreamableHttpClient
         return names;
     }
 
+    /// <summary>Returns the raw <c>tools/list</c> result (so tests can inspect each tool's outputSchema).</summary>
+    public Task<JsonElement> ListToolsAsync(CancellationToken ct = default)
+        => SendAsync(new { jsonrpc = "2.0", id = 3, method = "tools/list", @params = new { } }, captureSession: false, ct);
+
+    /// <summary>Calls a tool and returns the raw result (so tests can inspect structuredContent).</summary>
+    public Task<JsonElement> CallToolAsync(string name, object? arguments = null, CancellationToken ct = default)
+        => SendAsync(
+            new { jsonrpc = "2.0", id = 4, method = "tools/call", @params = new { name, arguments = arguments ?? new { } } },
+            captureSession: false, ct);
+
     private async Task<JsonElement> SendAsync(object payload, bool captureSession, CancellationToken ct)
     {
         using var request = BuildRequest(payload);

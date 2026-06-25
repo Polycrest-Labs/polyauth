@@ -35,7 +35,11 @@ export class AuthService {
     let app: FirebaseApp | null = null;
     let auth: Auth | null = null;
     try {
-      const config = APP_CONFIG.value.firebase;
+      const config = APP_CONFIG.value?.firebase;
+      if (!config?.apiKey) {
+        // Explicit check in case getAuth is lazy and doesn't throw synchronously on a placeholder config.
+        throw new Error('Firebase web config missing (apiKey).');
+      }
       app = getApps().length > 0 ? getApps()[0] : initializeApp(config);
       auth = getAuth(app);
     } catch (err) {

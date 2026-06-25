@@ -126,7 +126,12 @@ def main():
     # 5) MCP initialize + tools/list with the token
     tools = mcp_tools_list(f"{base}/mcp", access_token)
     print(f"[5] MCP tools/list -> {tools}")
-    assert "ping" in tools and "list_items" in tools, "expected sample tools"
+    # Generic verifier: any consuming app has its own tools. Optionally pass expected tool names as
+    # extra args (argv[4:]) that must be present.
+    assert tools, "tools/list returned no tools"
+    expected = sys.argv[4:]
+    missing = [t for t in expected if t not in tools]
+    assert not missing, f"missing expected tools: {missing}"
     print("\nRESULT: auth-code + PKCE + loopback + MCP tools/list SUCCEEDED")
 
 

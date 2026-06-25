@@ -47,6 +47,29 @@ public sealed class McpEndpointTests : IClassFixture<PolyAuthWebFactory>
     }
 
     [Fact]
+    public async Task List_items_advertises_output_schema_and_returns_structured_items()
+    {
+        var httpClient = _factory.CreateClient();
+        var token = await GetMcpTokenAsync(httpClient, "mcp.read mcp.write");
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var mcp = new McpStreamableHttpClient(httpClient, new Uri(httpClient.BaseAddress!, "mcp"));
+        await mcp.InitializeAsync();
+
+        // tools/list: list_items must advertise an outputSchema (UseStructuredContent = true).
+        var toolsResult = await mcp.ListToolsAsync();
+        var listItems = toolsResult.GetProperty("result").GetProperty("tools").EnumerateArray()
+            .First(t => t.GetProperty("name").GetString() == "list_items");
+        Assert.True(listItems.TryGetProperty("outputSchema", out _), "list_items should advertise an outputSchema");
+
+        // tools/call: the result must carry structuredContent shaped as { items: [...] } for the widget.
+        var call = await mcp.CallToolAsync("list_items");
+        var result = call.GetProperty("result");
+        Assert.True(result.TryGetProperty("structuredContent", out var structured), "tools/call should return structuredContent");
+        Assert.Equal(JsonValueKind.Array, structured.GetProperty("items").ValueKind);
+    }
+
+    [Fact]
     public async Task Mcp_without_mcp_scope_is_forbidden()
     {
         // A token with only api.read does not satisfy the mcp.read policy on /mcp.

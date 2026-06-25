@@ -20,6 +20,8 @@ done
 SIGN_B64=$(base64 -w0 "$OUT/signing.pfx")
 ENC_B64=$(base64 -w0 "$OUT/encryption.pfx")
 
-echo "# Set these as app settings (azd env, or App Service application settings):"
-echo "azd env set PolyAuth__OAuth__SigningCertificate__Base64 $SIGN_B64"
-echo "azd env set PolyAuth__OAuth__EncryptionCertificate__Base64 $ENC_B64"
+# These names match sample/infra/main.parameters.json (${POLYAUTH_SIGNING_CERT_B64} / ${POLYAUTH_ENCRYPTION_CERT_B64}),
+# which Bicep maps to the PolyAuth__OAuth__*Certificate__Base64 app settings.
+echo "# Run from the sample/ directory (where azure.yaml lives), then 'azd up':"
+echo "azd env set POLYAUTH_SIGNING_CERT_B64 $SIGN_B64"
+echo "azd env set POLYAUTH_ENCRYPTION_CERT_B64 $ENC_B64"

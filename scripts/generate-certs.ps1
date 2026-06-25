@@ -27,6 +27,8 @@ $encPath  = if ($OutDir) { Join-Path $OutDir 'encryption.pfx' } else { $null }
 $sign = New-PfxBase64 'PolyAuth-signing' $signPath
 $enc  = New-PfxBase64 'PolyAuth-encryption' $encPath
 
-Write-Output "# Set these as app settings (azd env, or App Service application settings):"
-Write-Output "azd env set PolyAuth__OAuth__SigningCertificate__Base64 $sign"
-Write-Output "azd env set PolyAuth__OAuth__EncryptionCertificate__Base64 $enc"
+# These names match sample/infra/main.parameters.json (${POLYAUTH_SIGNING_CERT_B64} / ${POLYAUTH_ENCRYPTION_CERT_B64}),
+# which Bicep maps to the PolyAuth__OAuth__*Certificate__Base64 app settings.
+Write-Output "# Run from the sample/ directory (where azure.yaml lives), then 'azd up':"
+Write-Output "azd env set POLYAUTH_SIGNING_CERT_B64 $sign"
+Write-Output "azd env set POLYAUTH_ENCRYPTION_CERT_B64 $enc"
