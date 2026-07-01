@@ -10,7 +10,15 @@
     <RootNamespace>PolyAuth</RootNamespace>
     <AssemblyName>PolyAuth</AssemblyName>
     <PackageId>PolyAuth</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>PolyAuth</Authors>
     <Description>Reusable Firebase login + OAuth 2.1 Authorization Server + MCP authorization for .NET 10 apps.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>authentication;authorization;oauth;oauth2;openiddict;firebase;mcp;aspnetcore;dotnet</PackageTags>
+    <PackageReleaseNotes>Initial NuGet package.</PackageReleaseNotes>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryType>git</RepositoryType>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
   </PropertyGroup>
 
   <ItemGroup>
@@ -30,6 +38,10 @@
     <PackageReference Include="MongoDB.Driver" Version="3.9.0" />
     <PackageReference Include="FirebaseAdmin" Version="3.5.0" />
     <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

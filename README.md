@@ -197,6 +197,40 @@ The library is self-contained (no feed dependency baked in) so it can ship eithe
 (e.g. GitHub Packages, consumed via `PackageReference` + `nuget.config`) or as a **copied `ProjectReference`**
 project. The sample consumes it via `ProjectReference`.
 
+### NuGet package release
+
+Package metadata lives in [`src/PolyAuth/PolyAuth.csproj`](src/PolyAuth/PolyAuth.csproj). To build the package:
+
+```powershell
+.\scripts\pack-nuget.ps1
+```
+
+That writes `artifacts/packages/PolyAuth.<version>.nupkg`.
+
+The preferred publishing path is GitHub Actions trusted publishing from `Polycrest-Labs/polyauth`, which avoids a
+long-lived NuGet API key. Create a trusted publishing policy on nuget.org with:
+
+| Field | Value |
+|---|---|
+| Package Owner | `polycrestlabs` |
+| Repository Owner | `Polycrest-Labs` |
+| Repository | `polyauth` |
+| Workflow File | `publish-nuget.yml` |
+| Environment | `release` |
+
+Publishing runs from `.github/workflows/publish-nuget.yml` when a GitHub Release is published, or manually via
+workflow dispatch. The workflow builds, tests, packs, logs into NuGet with OIDC, and pushes the package.
+
+As a local/manual fallback, create a NuGet API key with Push scope, set it in your shell, then run:
+
+```powershell
+$env:NUGET_API_KEY = "<nuget-api-key>"
+.\scripts\publish-nuget.ps1
+```
+
+Do not commit the API key. The first published package version is immutable on nuget.org; bump `<Version>` in
+`src/PolyAuth/PolyAuth.csproj` before publishing each later release.
+
 ## Sample app
 
 [`sample/`](sample) is a full reference app demonstrating the library end-to-end: the `web` API host (Firebase login

@@ -1,0 +1,62 @@
+name: Publish NuGet
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Build, test, pack, and publish
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      POLYAUTH_TEST_MONGO: mongodb://localhost:27017
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore PolyAuth.slnx
+
+      - name: Build
+        run: dotnet build PolyAuth.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test PolyAuth.slnx --configuration Release --no-build
+
+      - name: Pack
+        run: dotnet pack src/PolyAuth/PolyAuth.csproj --configuration Release --no-build --output artifacts/packages
+
+      - name: NuGet login
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: polycrestlabs
+
+      - name: Push package
+        run: dotnet nuget push "artifacts/packages/*.nupkg" --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
