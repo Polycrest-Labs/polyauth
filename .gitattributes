@@ -1,0 +1,33 @@
+* text=auto
+
+# Source and project files use LF in the repository and working tree.
+*.cs text eol=lf
+*.csproj text eol=lf
+*.slnx text eol=lf
+*.props text eol=lf
+*.targets text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+LICENSE text eol=lf
+
+# GitHub Actions and Unix shell scripts must stay LF.
+*.yml text eol=lf
+*.yaml text eol=lf
+*.sh text eol=lf
+
+# Windows scripts should check out with CRLF.
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary assets.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.pfx binary
+*.p12 binary
+*.nupkg binary

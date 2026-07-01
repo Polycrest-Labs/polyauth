@@ -221,15 +221,8 @@ long-lived NuGet API key. Create a trusted publishing policy on nuget.org with:
 Publishing runs from `.github/workflows/publish-nuget.yml` when a GitHub Release is published, or manually via
 workflow dispatch. The workflow builds, tests, packs, logs into NuGet with OIDC, and pushes the package.
 
-As a local/manual fallback, create a NuGet API key with Push scope, set it in your shell, then run:
-
-```powershell
-$env:NUGET_API_KEY = "<nuget-api-key>"
-.\scripts\publish-nuget.ps1
-```
-
-Do not commit the API key. The first published package version is immutable on nuget.org; bump `<Version>` in
-`src/PolyAuth/PolyAuth.csproj` before publishing each later release.
+The first published package version is immutable on nuget.org; bump `<Version>` in `src/PolyAuth/PolyAuth.csproj`
+before publishing each later release.
 
 ## Sample app
 
