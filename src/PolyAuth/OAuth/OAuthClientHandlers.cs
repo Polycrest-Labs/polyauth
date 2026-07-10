@@ -50,7 +50,10 @@ public sealed class OAuthClientMetadataConfigurationHandler :
     public ValueTask HandleAsync(OpenIddictServerEvents.HandleConfigurationRequestContext context)
     {
         context.Metadata["client_id_metadata_document_supported"] = true;
-        context.Metadata["registration_endpoint"] = new Uri(context.Issuer!, "/connect/register").AbsoluteUri;
+        // NOTE: no "registration_endpoint" — PolyAuth does not implement RFC 7591 Dynamic Client Registration.
+        // MCP clients use CIMD (client_id_metadata_document_supported, above) or a configured static client.
+        // Advertising a registration endpoint we don't handle made POST /connect/register fall through to the
+        // SPA and return a misleading 405; omit it so discovery is honest.
         context.Metadata["token_endpoint_auth_methods_supported"] = new JsonArray(
             OpenIddictConstants.ClientAuthenticationMethods.None,
             OpenIddictConstants.ClientAuthenticationMethods.PrivateKeyJwt);

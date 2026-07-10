@@ -105,12 +105,13 @@ public static class OAuthClientMetadataRules
             }
         }
 
+        // A CIMD can describe grant types the client uses with other authorization servers. Only require the
+        // interactive grant needed by this server; CreateApplicationDescriptor deliberately grants no permissions
+        // beyond authorization_code and refresh_token. Claude, for example, also advertises JWT bearer here.
         if (document.GrantTypes.Count == 0
-            || !document.GrantTypes.Contains(OpenIddictConstants.GrantTypes.AuthorizationCode, StringComparer.Ordinal)
-            || document.GrantTypes.Any(grantType => grantType is not OpenIddictConstants.GrantTypes.AuthorizationCode
-                and not OpenIddictConstants.GrantTypes.RefreshToken))
+            || !document.GrantTypes.Contains(OpenIddictConstants.GrantTypes.AuthorizationCode, StringComparer.Ordinal))
         {
-            return "Only authorization_code and refresh_token grant types are supported.";
+            return "The authorization_code grant type is required.";
         }
 
         if (document.ResponseTypes.Count == 0

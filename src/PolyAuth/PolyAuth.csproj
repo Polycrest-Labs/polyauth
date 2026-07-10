@@ -10,7 +10,7 @@
     <RootNamespace>PolyAuth</RootNamespace>
     <AssemblyName>PolyAuth</AssemblyName>
     <PackageId>PolyAuth</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.1.2</Version>
     <Authors>PolyAuth</Authors>
     <Description>Reusable Firebase login + OAuth 2.1 Authorization Server + MCP authorization for .NET 10 apps.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
