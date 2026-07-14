@@ -38,6 +38,7 @@ public sealed class OpenIddictSeeder : IOpenIddictSeeder
     private readonly IOpenIddictScopeManager _scopeManager;
     private readonly OAuthServerOptions _options;
     private readonly McpAuthOptions _mcpOptions;
+    private readonly bool _firebaseEnabled;
     private readonly ILogger<OpenIddictSeeder> _logger;
 
     public OpenIddictSeeder(
@@ -50,6 +51,7 @@ public sealed class OpenIddictSeeder : IOpenIddictSeeder
         _scopeManager = scopeManager;
         _options = options.Value.OAuth;
         _mcpOptions = options.Value.Mcp;
+        _firebaseEnabled = options.Value.Firebase.Enabled;
         _logger = logger;
     }
 
@@ -143,7 +145,6 @@ public sealed class OpenIddictSeeder : IOpenIddictSeeder
                 OpenIddictConstants.Permissions.Endpoints.Token,
                 OpenIddictConstants.Permissions.Endpoints.Revocation,
                 OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
-                OpenIddictConstants.Permissions.Prefixes.GrantType + PolyAuthConstants.FirebaseTokenExchangeGrantType,
                 OpenIddictConstants.Permissions.Scopes.Email,
                 OpenIddictConstants.Permissions.Scopes.Profile,
                 OpenIddictConstants.Permissions.Prefixes.Scope + OpenIddictConstants.Scopes.OpenId,
@@ -152,6 +153,13 @@ public sealed class OpenIddictSeeder : IOpenIddictSeeder
                 OpenIddictConstants.Permissions.Prefixes.Scope + AuthScopes.ApiWrite
             }
         };
+
+        // The Firebase token-exchange grant only exists on the server when Firebase login is on.
+        if (_firebaseEnabled)
+        {
+            descriptor.Permissions.Add(
+                OpenIddictConstants.Permissions.Prefixes.GrantType + PolyAuthConstants.FirebaseTokenExchangeGrantType);
+        }
 
         await UpsertApplicationAsync(_options.UiClientId, descriptor, ct);
     }

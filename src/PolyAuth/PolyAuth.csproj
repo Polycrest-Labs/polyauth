@@ -10,12 +10,12 @@
     <RootNamespace>PolyAuth</RootNamespace>
     <AssemblyName>PolyAuth</AssemblyName>
     <PackageId>PolyAuth</PackageId>
-    <Version>0.1.2</Version>
+    <Version>0.2.0</Version>
     <Authors>PolyAuth</Authors>
     <Description>Reusable Firebase login + OAuth 2.1 Authorization Server + MCP authorization for .NET 10 apps.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>authentication;authorization;oauth;oauth2;openiddict;firebase;mcp;aspnetcore;dotnet</PackageTags>
-    <PackageReleaseNotes>Initial NuGet package.</PackageReleaseNotes>
+    <PackageReleaseNotes>Adds the SqlServer store provider (OpenIddict.EntityFrameworkCore, runtime-only) and the bring-your-own-identity SessionBridge option; Firebase grant registration is now gated on Firebase.Enabled. Defaults preserve 0.1.x behavior.</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryType>git</RepositoryType>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -31,6 +31,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.9" />
+    <PackageReference Include="OpenIddict.EntityFrameworkCore" Version="7.5.0" />
     <PackageReference Include="OpenIddict.Server.AspNetCore" Version="7.5.0" />
     <PackageReference Include="OpenIddict.Validation.AspNetCore" Version="7.5.0" />
     <PackageReference Include="OpenIddict.Validation.ServerIntegration" Version="7.5.0" />

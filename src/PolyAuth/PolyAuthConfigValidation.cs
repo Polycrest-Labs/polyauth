@@ -18,14 +18,31 @@ internal static class PolyAuthConfigValidation
 
         var oauth = options.OAuth;
 
+        var isMongo = string.Equals(oauth.Store.Provider, StoreProviders.Mongo, StringComparison.OrdinalIgnoreCase);
+        var isSqlServer = string.Equals(oauth.Store.Provider, StoreProviders.SqlServer, StringComparison.OrdinalIgnoreCase);
+        if (!isMongo && !isSqlServer)
+        {
+            throw new InvalidOperationException(
+                $"PolyAuth:OAuth:Store:Provider '{oauth.Store.Provider}' is not supported. Use \"{StoreProviders.Mongo}\" or \"{StoreProviders.SqlServer}\".");
+        }
+
         if (string.IsNullOrWhiteSpace(oauth.Store.ConnectionString))
         {
             throw new InvalidOperationException("PolyAuth:OAuth:Store:ConnectionString is required when OAuth is enabled.");
         }
 
-        if (string.IsNullOrWhiteSpace(oauth.Store.DatabaseName))
+        if (isMongo && string.IsNullOrWhiteSpace(oauth.Store.DatabaseName))
         {
-            throw new InvalidOperationException("PolyAuth:OAuth:Store:DatabaseName is required when OAuth is enabled.");
+            throw new InvalidOperationException("PolyAuth:OAuth:Store:DatabaseName is required when OAuth is enabled with the Mongo store provider.");
+        }
+
+        if (oauth.SessionBridge.Enabled == true
+            && oauth.SessionBridge.AuthenticationSchemes is not { Length: > 0 }
+            && !options.Firebase.Enabled)
+        {
+            throw new InvalidOperationException(
+                "PolyAuth:OAuth:SessionBridge is enabled but no AuthenticationSchemes are configured and Firebase is disabled. "
+                + "Set PolyAuth:OAuth:SessionBridge:AuthenticationSchemes to the bearer scheme(s) that may establish an OAuth session (e.g. your app's JwtBearer scheme), or enable Firebase.");
         }
 
         if (!isDevelopment)

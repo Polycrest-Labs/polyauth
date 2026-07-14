@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -56,7 +57,9 @@ public static class PolyAuthServiceCollectionExtensions
 
     private static void ConfigureFirebase(IServiceCollection services, PolyAuthOptions options)
     {
-        if (!options.Firebase.Enabled && !options.OAuth.Enabled)
+        // The token-exchange grant is gated on Firebase.Enabled too, so nothing needs these
+        // services when Firebase login is off.
+        if (!options.Firebase.Enabled)
         {
             return;
         }
@@ -76,10 +79,6 @@ public static class PolyAuthServiceCollectionExtensions
         }
 
         var oauth = options.OAuth;
-        var mongoClient = new MongoClient(oauth.Store.ConnectionString);
-        var database = mongoClient.GetDatabase(oauth.Store.DatabaseName);
-        services.TryAddSingleton<IMongoClient>(mongoClient);
-        services.TryAddSingleton(database);
 
         services.AddMemoryCache();
         services.AddScoped<IOAuthClientMetadataService, OAuthClientMetadataService>();
@@ -91,8 +90,33 @@ public static class PolyAuthServiceCollectionExtensions
 
         var publicResourceIndicators = OAuthResourceIndicators.GetPublicResourceIndicators(oauth, options.Mcp);
 
-        services.AddOpenIddict()
-            .AddCore(core => core.UseMongoDb().UseDatabase(database))
+        var openIddict = services.AddOpenIddict();
+
+        // Store provider: Mongo (the 0.1.x default, byte-for-byte) or SqlServer (an internal,
+        // OpenIddict-only EF Core context — runtime row-mapping only; the consumer owns the DDL).
+        if (string.Equals(oauth.Store.Provider, StoreProviders.Mongo, StringComparison.OrdinalIgnoreCase))
+        {
+            var mongoClient = new MongoClient(oauth.Store.ConnectionString);
+            var database = mongoClient.GetDatabase(oauth.Store.DatabaseName);
+            services.TryAddSingleton<IMongoClient>(mongoClient);
+            services.TryAddSingleton(database);
+
+            openIddict.AddCore(core => core.UseMongoDb().UseDatabase(database));
+        }
+        else if (string.Equals(oauth.Store.Provider, StoreProviders.SqlServer, StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddDbContext<PolyAuthSqlDbContext>(db =>
+                db.UseSqlServer(oauth.Store.ConnectionString).UseOpenIddict());
+
+            openIddict.AddCore(core => core.UseEntityFrameworkCore().UseDbContext<PolyAuthSqlDbContext>());
+        }
+        else
+        {
+            throw new InvalidOperationException(
+                $"PolyAuth:OAuth:Store:Provider '{oauth.Store.Provider}' is not supported. Use \"{StoreProviders.Mongo}\" or \"{StoreProviders.SqlServer}\".");
+        }
+
+        openIddict
             .AddServer(server =>
             {
                 if (!string.IsNullOrWhiteSpace(oauth.Issuer))
@@ -108,8 +132,12 @@ public static class PolyAuthServiceCollectionExtensions
                 server.AllowAuthorizationCodeFlow()
                     .AllowRefreshTokenFlow()
                     .AllowClientCredentialsFlow()
-                    .AllowCustomFlow(PolyAuthConstants.FirebaseTokenExchangeGrantType)
                     .RequireProofKeyForCodeExchange();
+
+                if (options.Firebase.Enabled)
+                {
+                    server.AllowCustomFlow(PolyAuthConstants.FirebaseTokenExchangeGrantType);
+                }
 
                 server.RegisterScopes(
                 [
@@ -122,9 +150,13 @@ public static class PolyAuthServiceCollectionExtensions
                 ]);
                 server.RegisterResources(publicResourceIndicators);
 
-                // Grants
-                server.AddEventHandler<OpenIddictServerEvents.HandleTokenRequestContext>(b =>
-                    b.UseScopedHandler<FirebaseTokenExchangeHandler>());
+                // Grants (the Firebase token exchange only participates when Firebase login is on)
+                if (options.Firebase.Enabled)
+                {
+                    server.AddEventHandler<OpenIddictServerEvents.HandleTokenRequestContext>(b =>
+                        b.UseScopedHandler<FirebaseTokenExchangeHandler>());
+                }
+
                 server.AddEventHandler<OpenIddictServerEvents.HandleTokenRequestContext>(b =>
                     b.UseScopedHandler<ClientCredentialsTokenHandler>());
 
@@ -214,6 +246,14 @@ public static class PolyAuthServiceCollectionExtensions
 
         var authBuilder = services.AddAuthentication(o =>
         {
+            // Respect a default the consuming app already chose (e.g. its own JwtBearer registered
+            // before AddPolyAuth): only claim the defaults when none exist yet. Apps where PolyAuth
+            // is the sole authentication owner (the 0.1.x behavior) are unaffected.
+            if (o.DefaultScheme is not null || o.DefaultAuthenticateScheme is not null)
+            {
+                return;
+            }
+
             if (options.OAuth.Enabled)
             {
                 o.DefaultAuthenticateScheme = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme;

@@ -52,9 +52,15 @@ public static class PolyAuthEndpointRouteBuilderExtensions
         // RequestDelegate overload, which would discard the IResult (ASP0016).
         endpoints.MapMethods("/connect/logout", ["GET", "POST"], (Delegate)LogoutAsync).AllowAnonymous();
 
-        if (options.Firebase.Enabled)
+        if (SessionBridgeGating.IsEnabled(options))
         {
-            endpoints.MapPost("/api/oauth/session", CreateSessionAsync).RequireAuthorization(AuthPolicies.FirebaseUser);
+            // Gate the bridge by the configured schemes (the consuming app's own bearer scheme when
+            // SessionBridge.AuthenticationSchemes is set; Firebase otherwise — the 0.1.x behavior).
+            var policy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder(
+                    SessionBridgeGating.ResolveSchemes(options))
+                .RequireAuthenticatedUser()
+                .Build();
+            endpoints.MapPost("/api/oauth/session", CreateSessionAsync).RequireAuthorization(policy);
         }
 
         return endpoints;

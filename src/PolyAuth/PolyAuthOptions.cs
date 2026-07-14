@@ -51,8 +51,8 @@ public sealed class OAuthServerOptions
     public int AccessTokenLifetimeMinutes { get; set; } = 60;
     public int RefreshTokenLifetimeDays { get; set; } = 14;
 
-    /// <summary>Cosmos-for-Mongo (RU serverless) connection used by the OpenIddict store.</summary>
-    public MongoStoreOptions Store { get; set; } = new();
+    /// <summary>The persistence backing the OpenIddict store (Mongo by default, or SQL Server).</summary>
+    public StoreOptions Store { get; set; } = new();
 
     /// <summary>Grantable scopes beyond the built-in <c>api.*</c>/<c>mcp.*</c> set.</summary>
     public ScopeOptions Scopes { get; set; } = new();
@@ -81,6 +81,44 @@ public sealed class OAuthServerOptions
 
     /// <summary>Optional extension: token-endpoint diagnostics logging.</summary>
     public bool EnableDiagnostics { get; set; }
+
+    /// <summary>
+    /// Bring-your-own-identity session bridge: gates <c>POST /api/oauth/session</c> (which converts an
+    /// authenticated bearer principal into the interactive <c>OAuthSession</c> cookie) by any configured
+    /// authentication scheme instead of only Firebase. Defaults preserve today's behavior: the endpoint
+    /// maps when Firebase is enabled and authenticates with the Firebase scheme.
+    /// </summary>
+    public SessionBridgeOptions SessionBridge { get; set; } = new();
+}
+
+/// <summary>Options for the bring-your-own-identity session bridge.</summary>
+public sealed class SessionBridgeOptions
+{
+    /// <summary>
+    /// Whether <c>POST /api/oauth/session</c> is mapped. When null (the default) the endpoint follows
+    /// <c>Firebase.Enabled</c>, exactly as before this option existed.
+    /// </summary>
+    public bool? Enabled { get; set; }
+
+    /// <summary>
+    /// The authentication schemes that may establish an OAuth session (e.g. the consuming app's own
+    /// JwtBearer scheme). When null/empty the Firebase scheme is used.
+    /// </summary>
+    public string[]? AuthenticationSchemes { get; set; }
+}
+
+/// <summary>Resolves the effective session-bridge gating from the configured options.</summary>
+internal static class SessionBridgeGating
+{
+    /// <summary>Whether <c>POST /api/oauth/session</c> should be mapped.</summary>
+    public static bool IsEnabled(PolyAuthOptions options)
+        => options.OAuth.SessionBridge.Enabled ?? options.Firebase.Enabled;
+
+    /// <summary>The authentication schemes gating the endpoint (Firebase when none are configured).</summary>
+    public static string[] ResolveSchemes(PolyAuthOptions options)
+        => options.OAuth.SessionBridge.AuthenticationSchemes is { Length: > 0 } configured
+            ? configured
+            : [AuthSchemes.Firebase];
 }
 
 /// <summary>MCP authorization options.</summary>
@@ -106,11 +144,23 @@ public sealed class CertificateOptions
     public bool IsConfigured => !string.IsNullOrWhiteSpace(Base64) || !string.IsNullOrWhiteSpace(Path);
 }
 
-/// <summary>The Mongo (Cosmos-for-Mongo) connection used by the OpenIddict store.</summary>
-public sealed class MongoStoreOptions
+/// <summary>The connection used by the OpenIddict store.</summary>
+public sealed class StoreOptions
 {
+    /// <summary>Store provider: <c>"Mongo"</c> (the default, Cosmos-for-Mongo compatible) or <c>"SqlServer"</c>.</summary>
+    public string Provider { get; set; } = StoreProviders.Mongo;
+
     public string? ConnectionString { get; set; }
+
+    /// <summary>Mongo only — ignored by the SqlServer provider (the database is part of the connection string).</summary>
     public string? DatabaseName { get; set; }
+}
+
+/// <summary>The supported <see cref="StoreOptions.Provider"/> values.</summary>
+public static class StoreProviders
+{
+    public const string Mongo = "Mongo";
+    public const string SqlServer = "SqlServer";
 }
 
 /// <summary>Additional grantable scopes beyond the built-in api.*/mcp.* set.</summary>
