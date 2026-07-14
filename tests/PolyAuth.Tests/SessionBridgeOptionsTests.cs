@@ -62,6 +62,26 @@ public sealed class SessionBridgeOptionsTests
     }
 
     [Fact]
+    public void Configured_schemes_imply_enabled_without_firebase()
+    {
+        // A BYO-identity consumer that sets only the schemes (Firebase off, Enabled left null) still gets
+        // the endpoint mapped — no need to also set Enabled = true.
+        Assert.True(SessionBridgeGating.IsEnabled(Options(o =>
+        {
+            o.Firebase.Enabled = false;
+            o.OAuth.SessionBridge.AuthenticationSchemes = ["Bearer"];
+        })));
+
+        // Explicit Enabled = false still wins over configured schemes.
+        Assert.False(SessionBridgeGating.IsEnabled(Options(o =>
+        {
+            o.Firebase.Enabled = false;
+            o.OAuth.SessionBridge.Enabled = false;
+            o.OAuth.SessionBridge.AuthenticationSchemes = ["Bearer"];
+        })));
+    }
+
+    [Fact]
     public void Enabled_without_schemes_and_without_firebase_fails_validation()
     {
         var options = Options(o =>

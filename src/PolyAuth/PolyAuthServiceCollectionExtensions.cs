@@ -94,7 +94,8 @@ public static class PolyAuthServiceCollectionExtensions
 
         // Store provider: Mongo (the 0.1.x default, byte-for-byte) or SqlServer (an internal,
         // OpenIddict-only EF Core context — runtime row-mapping only; the consumer owns the DDL).
-        if (string.Equals(oauth.Store.Provider, StoreProviders.Mongo, StringComparison.OrdinalIgnoreCase))
+        // Validate() already rejects any other provider before we get here; the else is a defensive guard.
+        if (StoreProviders.IsMongo(oauth.Store.Provider))
         {
             var mongoClient = new MongoClient(oauth.Store.ConnectionString);
             var database = mongoClient.GetDatabase(oauth.Store.DatabaseName);
@@ -103,7 +104,7 @@ public static class PolyAuthServiceCollectionExtensions
 
             openIddict.AddCore(core => core.UseMongoDb().UseDatabase(database));
         }
-        else if (string.Equals(oauth.Store.Provider, StoreProviders.SqlServer, StringComparison.OrdinalIgnoreCase))
+        else if (StoreProviders.IsSqlServer(oauth.Store.Provider))
         {
             services.AddDbContext<PolyAuthSqlDbContext>(db =>
                 db.UseSqlServer(oauth.Store.ConnectionString).UseOpenIddict());
@@ -112,8 +113,7 @@ public static class PolyAuthServiceCollectionExtensions
         }
         else
         {
-            throw new InvalidOperationException(
-                $"PolyAuth:OAuth:Store:Provider '{oauth.Store.Provider}' is not supported. Use \"{StoreProviders.Mongo}\" or \"{StoreProviders.SqlServer}\".");
+            throw new InvalidOperationException(StoreProviders.UnsupportedMessage(oauth.Store.Provider));
         }
 
         openIddict

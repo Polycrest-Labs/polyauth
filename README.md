@@ -96,8 +96,13 @@ Options shape: `PolyAuthOptions { Firebase, OAuth, Mcp }` — see [`src/PolyAuth
       "SigningCertificate":    { "Base64": "", "Path": "", "Password": "" },  // required outside Development
       "EncryptionCertificate": { "Base64": "", "Path": "", "Password": "" },  // required outside Development
       "Store": {
+        "Provider": "Mongo",                                           // "Mongo" (default) or "SqlServer"
         "ConnectionString": "<Cosmos-for-Mongo RU connection string>",        // required when OAuth enabled
-        "DatabaseName": "polyauth-openiddict"
+        "DatabaseName": "polyauth-openiddict"                          // Mongo only (SqlServer takes the database from the connection string)
+      },
+      "SessionBridge": {                                               // optional: bring-your-own-identity handoff for POST /api/oauth/session
+        "Enabled": null,                                              // null = follow Firebase.Enabled, or on automatically when AuthenticationSchemes is set
+        "AuthenticationSchemes": null                                 // null/empty = Firebase; set to your own bearer scheme(s) to bridge a non-Firebase identity
       },
       "Scopes": { "Additional": [] },
       "StaticClients": [
@@ -119,10 +124,11 @@ Options shape: `PolyAuthOptions { Firebase, OAuth, Mcp }` — see [`src/PolyAuth
 }
 ```
 
-**Fail-fast:** `AddPolyAuth` throws with a clear message when a required value is missing — `Store.ConnectionString`/
-`DatabaseName` when OAuth is enabled, and (outside Development) `Issuer`, the signing/encryption certificates, and the
-Firebase service account. In **Development**, OpenIddict development certificates are used automatically and the
-transport-security requirement is relaxed.
+**Fail-fast:** `AddPolyAuth` throws with a clear message when a required value is missing — an unknown
+`Store.Provider`, `Store.ConnectionString` when OAuth is enabled, `Store.DatabaseName` when the **Mongo** provider is
+used, a `SessionBridge` that is enabled without either Firebase or `AuthenticationSchemes`, and (outside Development)
+`Issuer`, the signing/encryption certificates, and the Firebase service account. In **Development**, OpenIddict
+development certificates are used automatically and the transport-security requirement is relaxed.
 
 ## What the consuming app provides
 Only two things beyond the calls above:
@@ -145,7 +151,11 @@ seeding) is owned by the library.
   `sample/infra/main.parameters.json` maps to the `PolyAuth__OAuth__*Certificate__Base64` app settings.
   Alternatively use an App Service **Key Vault reference**: set the app setting to
   `@Microsoft.KeyVault(SecretUri=https://<vault>.vault.azure.net/secrets/<name>/)` (no code change).
-- **Store** — `PolyAuth:OAuth:Store:ConnectionString` is the Cosmos-for-Mongo (RU serverless) connection.
+- **Store** — `PolyAuth:OAuth:Store:ConnectionString` is the Cosmos-for-Mongo (RU serverless) connection by default
+  (`Provider: "Mongo"`). Set `Provider: "SqlServer"` to back the OpenIddict store with SQL Server instead; the
+  library maps rows at runtime only and the consuming app owns the schema (create the four OpenIddict tables with
+  your own migration tooling — e.g. a DbUp script generated once from `Database.GenerateCreateScript()`). The
+  `DatabaseName` setting is ignored for SqlServer (the database is part of the connection string).
 - **Widget host** — `PolyAuth:Mcp:WidgetHostBaseUrl` is the separate static host serving the Angular MCP widget app.
 - **ChatGPT** — set `PolyAuth:OAuth:EnableClientAssertion=true`. ChatGPT's DCR-by-URL clients authenticate the token
   exchange with `private_key_jwt`; without the client-assertion handlers the code exchange fails with

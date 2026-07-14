@@ -133,15 +133,17 @@ public sealed class SessionBridgeTests
             .UseOpenIddict()
             .Options;
 
-        await using (var context = new PolyAuthSqlDbContext(dbOptions))
-        {
-            await context.Database.EnsureCreatedAsync();
-        }
-
         try
         {
+            // Create the scratch schema inside the try so the finally always drops the database,
+            // even if EnsureCreated partially succeeds before throwing.
+            await using (var context = new PolyAuthSqlDbContext(dbOptions))
+            {
+                await context.Database.EnsureCreatedAsync();
+            }
+
             await using var app = await BuildAppAsync(connectionString);
-            var client = app.GetTestClient();
+            using var client = app.GetTestClient();
 
             // 0) Without the test bearer header the bridge must challenge (401), not mint a session.
             var anonymous = await client.PostAsJsonAsync("/api/oauth/session", new { returnUrl = "/" });

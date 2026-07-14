@@ -18,12 +18,11 @@ internal static class PolyAuthConfigValidation
 
         var oauth = options.OAuth;
 
-        var isMongo = string.Equals(oauth.Store.Provider, StoreProviders.Mongo, StringComparison.OrdinalIgnoreCase);
-        var isSqlServer = string.Equals(oauth.Store.Provider, StoreProviders.SqlServer, StringComparison.OrdinalIgnoreCase);
+        var isMongo = StoreProviders.IsMongo(oauth.Store.Provider);
+        var isSqlServer = StoreProviders.IsSqlServer(oauth.Store.Provider);
         if (!isMongo && !isSqlServer)
         {
-            throw new InvalidOperationException(
-                $"PolyAuth:OAuth:Store:Provider '{oauth.Store.Provider}' is not supported. Use \"{StoreProviders.Mongo}\" or \"{StoreProviders.SqlServer}\".");
+            throw new InvalidOperationException(StoreProviders.UnsupportedMessage(oauth.Store.Provider));
         }
 
         if (string.IsNullOrWhiteSpace(oauth.Store.ConnectionString))

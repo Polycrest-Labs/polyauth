@@ -96,7 +96,9 @@ public sealed class SessionBridgeOptions
 {
     /// <summary>
     /// Whether <c>POST /api/oauth/session</c> is mapped. When null (the default) the endpoint follows
-    /// <c>Firebase.Enabled</c>, exactly as before this option existed.
+    /// <c>Firebase.Enabled</c> — or turns on automatically when <see cref="AuthenticationSchemes"/> is
+    /// configured, so a bring-your-own-identity consumer does not have to set both. Set explicitly to
+    /// force the endpoint on or off.
     /// </summary>
     public bool? Enabled { get; set; }
 
@@ -112,7 +114,8 @@ internal static class SessionBridgeGating
 {
     /// <summary>Whether <c>POST /api/oauth/session</c> should be mapped.</summary>
     public static bool IsEnabled(PolyAuthOptions options)
-        => options.OAuth.SessionBridge.Enabled ?? options.Firebase.Enabled;
+        => options.OAuth.SessionBridge.Enabled
+           ?? (options.Firebase.Enabled || options.OAuth.SessionBridge.AuthenticationSchemes is { Length: > 0 });
 
     /// <summary>The authentication schemes gating the endpoint (Firebase when none are configured).</summary>
     public static string[] ResolveSchemes(PolyAuthOptions options)
@@ -145,7 +148,7 @@ public sealed class CertificateOptions
 }
 
 /// <summary>The connection used by the OpenIddict store.</summary>
-public sealed class StoreOptions
+public class StoreOptions
 {
     /// <summary>Store provider: <c>"Mongo"</c> (the default, Cosmos-for-Mongo compatible) or <c>"SqlServer"</c>.</summary>
     public string Provider { get; set; } = StoreProviders.Mongo;
@@ -156,11 +159,32 @@ public sealed class StoreOptions
     public string? DatabaseName { get; set; }
 }
 
+/// <summary>
+/// Obsolete alias for <see cref="StoreOptions"/>, retained for source compatibility with 0.1.x where the
+/// store options type was named <c>MongoStoreOptions</c>. Prefer <see cref="StoreOptions"/>.
+/// </summary>
+[Obsolete("Renamed to StoreOptions; this alias will be removed in a future release.")]
+public sealed class MongoStoreOptions : StoreOptions
+{
+}
+
 /// <summary>The supported <see cref="StoreOptions.Provider"/> values.</summary>
 public static class StoreProviders
 {
     public const string Mongo = "Mongo";
     public const string SqlServer = "SqlServer";
+
+    /// <summary>Whether <paramref name="provider"/> selects the Mongo store (case-insensitive).</summary>
+    public static bool IsMongo(string? provider)
+        => string.Equals(provider, Mongo, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Whether <paramref name="provider"/> selects the SqlServer store (case-insensitive).</summary>
+    public static bool IsSqlServer(string? provider)
+        => string.Equals(provider, SqlServer, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The fail-fast message shared by config validation and store wiring for an unknown provider.</summary>
+    public static string UnsupportedMessage(string? provider)
+        => $"PolyAuth:OAuth:Store:Provider '{provider}' is not supported. Use \"{Mongo}\" or \"{SqlServer}\".";
 }
 
 /// <summary>Additional grantable scopes beyond the built-in api.*/mcp.* set.</summary>

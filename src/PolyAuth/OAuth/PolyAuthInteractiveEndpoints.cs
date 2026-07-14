@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -34,8 +35,10 @@ public interface IPolyAuthConsentRenderer
 
 /// <summary>
 /// Maps the library-owned interactive OAuth endpoints — <c>/connect/authorize</c>, <c>/connect/logout</c>, and
-/// (when Firebase is enabled) the Firebase→session-cookie bridge <c>POST /api/oauth/session</c>. A consuming app
-/// calls <c>app.MapPolyAuthEndpoints()</c> instead of hand-writing these controllers. No-ops when OAuth is disabled.
+/// (when the session bridge is enabled) the identity→session-cookie bridge <c>POST /api/oauth/session</c>. The
+/// bridge follows <c>OAuth:SessionBridge</c> (Firebase-gated by default; see <see cref="SessionBridgeGating"/>).
+/// A consuming app calls <c>app.MapPolyAuthEndpoints()</c> instead of hand-writing these controllers. No-ops
+/// when OAuth is disabled.
 /// </summary>
 public static class PolyAuthEndpointRouteBuilderExtensions
 {
@@ -56,8 +59,7 @@ public static class PolyAuthEndpointRouteBuilderExtensions
         {
             // Gate the bridge by the configured schemes (the consuming app's own bearer scheme when
             // SessionBridge.AuthenticationSchemes is set; Firebase otherwise — the 0.1.x behavior).
-            var policy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder(
-                    SessionBridgeGating.ResolveSchemes(options))
+            var policy = new AuthorizationPolicyBuilder(SessionBridgeGating.ResolveSchemes(options))
                 .RequireAuthenticatedUser()
                 .Build();
             endpoints.MapPost("/api/oauth/session", CreateSessionAsync).RequireAuthorization(policy);
@@ -122,7 +124,16 @@ public static class PolyAuthEndpointRouteBuilderExtensions
         var user = http.User;
         var userId = user.FindFirstValue("uid")
                      ?? user.FindFirstValue("sub")
-                     ?? user.FindFirstValue(ClaimTypes.NameIdentifier)!;
+                     ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+        {
+            // The caller authenticated (the policy passed) but the principal carries no usable subject.
+            // Bring-your-own-identity schemes can emit their subject under other claim names, so fail with a
+            // clear 401 instead of throwing ArgumentNullException from the Claim constructor below.
+            return Results.Problem(
+                "The authenticated principal has no subject claim (uid, sub, or nameidentifier).",
+                statusCode: StatusCodes.Status401Unauthorized);
+        }
 
         var claims = new List<Claim>
         {
