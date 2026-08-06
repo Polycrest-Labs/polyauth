@@ -29,7 +29,7 @@ public sealed class McpEndpointTests : IClassFixture<PolyAuthWebFactory>
     }
 
     [Fact]
-    public async Task Mcp_initialize_and_tools_list_with_valid_token()
+    public async Task Mcp_legacy_initialize_and_tools_list_with_valid_token()
     {
         var httpClient = _factory.CreateClient();
         var token = await GetMcpTokenAsync(httpClient, "mcp.read mcp.write");
@@ -47,14 +47,40 @@ public sealed class McpEndpointTests : IClassFixture<PolyAuthWebFactory>
     }
 
     [Fact]
+    public async Task Mcp_current_discover_and_tools_list_with_valid_token()
+    {
+        var httpClient = _factory.CreateClient();
+        var token = await GetMcpTokenAsync(httpClient, "mcp.read mcp.write");
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var mcp = new McpStreamableHttpClient(
+            httpClient,
+            new Uri(httpClient.BaseAddress!, "mcp"),
+            McpProtocolMode.Current2026);
+
+        var discover = await mcp.ConnectAsync();
+        var result = discover.GetProperty("result");
+        Assert.Contains(
+            "2026-07-28",
+            result.GetProperty("supportedVersions").EnumerateArray().Select(version => version.GetString()));
+
+        var tools = await mcp.ListToolNamesAsync();
+        Assert.Contains("ping", tools);
+        Assert.Contains("list_items", tools);
+    }
+
+    [Fact]
     public async Task List_items_advertises_output_schema_and_returns_structured_items()
     {
         var httpClient = _factory.CreateClient();
         var token = await GetMcpTokenAsync(httpClient, "mcp.read mcp.write");
         httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var mcp = new McpStreamableHttpClient(httpClient, new Uri(httpClient.BaseAddress!, "mcp"));
-        await mcp.InitializeAsync();
+        var mcp = new McpStreamableHttpClient(
+            httpClient,
+            new Uri(httpClient.BaseAddress!, "mcp"),
+            McpProtocolMode.Current2026);
+        await mcp.ConnectAsync();
 
         // tools/list: list_items must advertise an outputSchema (UseStructuredContent = true).
         var toolsResult = await mcp.ListToolsAsync();

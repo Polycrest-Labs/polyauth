@@ -4,7 +4,7 @@
 Exercises the Claude-Desktop-style path end-to-end:
   Firebase sign-in -> /api/oauth/session (cookie) -> /connect/authorize (PKCE + consent)
   -> loopback redirect with code -> /connect/token (authorization_code + PKCE)
-  -> MCP initialize + tools/list with the issued mcp.read/mcp.write token.
+  -> MCP server/discover + tools/list with the issued mcp.read/mcp.write token.
 
 Usage:
   python mcp_oauth_flow.py https://web-xxxx.azurewebsites.net e2e@polyauth.test "Passw0rd!longenough"
@@ -123,7 +123,7 @@ def main():
     access_token = token["access_token"]
     print(f"[4] exchanged code for access token (scope={token.get('scope')})")
 
-    # 5) MCP initialize + tools/list with the token
+    # 5) Stateless MCP 2026-07-28 server/discover + tools/list with the token
     tools = mcp_tools_list(f"{base}/mcp", access_token)
     print(f"[5] MCP tools/list -> {tools}")
     # Generic verifier: any consuming app has its own tools. Optionally pass expected tool names as
@@ -157,30 +157,36 @@ def post_form(url, fields):
 
 
 def mcp_tools_list(mcp_url, token):
-    session = {"id": None}
+    protocol_version = "2026-07-28"
+    request_meta = {
+        "io.modelcontextprotocol/protocolVersion": protocol_version,
+        "io.modelcontextprotocol/clientInfo": {"name": "polyauth-script", "version": "1.0"},
+        "io.modelcontextprotocol/clientCapabilities": {},
+    }
 
-    def call(payload, notify=False):
+    def call(request_id, method, params=None, target_name=None):
+        request_params = dict(params or {})
+        request_params["_meta"] = request_meta
+        payload = {"jsonrpc": "2.0", "id": request_id, "method": method, "params": request_params}
         req = urllib.request.Request(
             mcp_url, data=json.dumps(payload).encode(),
             headers={
                 "Content-Type": "application/json",
                 "Accept": "application/json, text/event-stream",
                 "Authorization": f"Bearer {token}",
-                **({"Mcp-Session-Id": session["id"]} if session["id"] else {}),
+                "MCP-Protocol-Version": protocol_version,
+                "Mcp-Method": method,
+                **({"Mcp-Name": target_name} if target_name else {}),
             }, method="POST")
         with urllib.request.urlopen(req, timeout=30) as r:
-            if "Mcp-Session-Id" in r.headers and not session["id"]:
-                session["id"] = r.headers["Mcp-Session-Id"]
             body = r.read().decode()
-        if notify:
-            return None
         return extract_json(body)
 
-    call({"jsonrpc": "2.0", "id": 1, "method": "initialize",
-          "params": {"protocolVersion": "2025-06-18", "capabilities": {},
-                     "clientInfo": {"name": "polyauth-script", "version": "1.0"}}})
-    call({"jsonrpc": "2.0", "method": "notifications/initialized"}, notify=True)
-    result = call({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}})
+    discover = call(1, "server/discover")
+    supported = discover.get("result", {}).get("supportedVersions", [])
+    assert protocol_version in supported, f"server does not advertise {protocol_version}: {supported}"
+
+    result = call(2, "tools/list")
     return [t["name"] for t in result.get("result", {}).get("tools", [])]
 
 

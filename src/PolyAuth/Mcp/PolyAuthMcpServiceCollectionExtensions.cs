@@ -9,9 +9,11 @@ namespace PolyAuth.Mcp;
 public static class PolyAuthMcpServiceCollectionExtensions
 {
     /// <summary>
-    /// Wires <c>AddMcpServer().WithHttpTransport()</c> plus a tool-error request filter (maps exceptions to
-    /// user-facing tool errors and logs them with correlation/trace ids), then applies the app's
-    /// <paramref name="configureServer"/> delegate so the app can register its own tools and resources.
+    /// Wires <c>AddMcpServer().WithHttpTransport()</c> in stateless mode plus a tool-error request filter
+    /// (maps exceptions to user-facing tool errors and logs them with correlation/trace ids), then applies
+    /// the app's <paramref name="configureServer"/> delegate so the app can register its own tools and resources.
+    /// Stateless mode supports the 2026-07-28 protocol while the SDK continues to accept legacy
+    /// initialize-based clients.
     /// </summary>
     public static IServiceCollection AddPolyAuthMcp(
         this IServiceCollection services,
@@ -23,7 +25,7 @@ public static class PolyAuthMcpServiceCollectionExtensions
 
         var builder = services
             .AddMcpServer(options => options.ServerInstructions = McpServerInstructions.Default)
-            .WithHttpTransport()
+            .WithHttpTransport(options => options.Stateless = true)
             .WithRequestFilters(filters =>
             {
                 filters.AddCallToolFilter(next => async (request, cancellationToken) =>
