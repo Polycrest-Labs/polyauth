@@ -10,12 +10,12 @@
     <RootNamespace>PolyAuth</RootNamespace>
     <AssemblyName>PolyAuth</AssemblyName>
     <PackageId>PolyAuth</PackageId>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <Authors>PolyAuth</Authors>
     <Description>Reusable Firebase login + OAuth 2.1 Authorization Server + MCP authorization for .NET 10 apps.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>authentication;authorization;oauth;oauth2;openiddict;firebase;mcp;aspnetcore;dotnet</PackageTags>
-    <PackageReleaseNotes>Adds the SqlServer store provider (OpenIddict.EntityFrameworkCore, runtime-only) and the bring-your-own-identity SessionBridge option (configuring SessionBridge:AuthenticationSchemes now enables the endpoint automatically). Firebase login, the Firebase token-exchange grant, and the Firebase helper services (IFirebaseTokenVerifier, IFirebaseUserAdmin, IAuthTestUserProvisioner) are now gated on Firebase.Enabled — apps that ran OAuth with Firebase disabled must set Firebase:Enabled=true to keep them. MongoStoreOptions was renamed to StoreOptions (an obsolete alias is kept). Existing OAuth+Firebase configurations are unaffected.</PackageReleaseNotes>
+    <PackageReleaseNotes>Upgrades the official C# MCP SDK to 2.1.0 and explicitly enables stateless Streamable HTTP for the 2026-07-28 MCP protocol revision while retaining compatibility with legacy initialize-based clients. Stateless transport removes MCP session affinity and is suitable for horizontally scaled ASP.NET Core deployments.</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryType>git</RepositoryType>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -39,7 +39,7 @@
     <PackageReference Include="OpenIddict.MongoDb" Version="7.5.0" />
     <PackageReference Include="MongoDB.Driver" Version="3.10.0" />
     <PackageReference Include="FirebaseAdmin" Version="3.6.0" />
-    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.4.1" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.1.0" />
   </ItemGroup>
 
   <ItemGroup>

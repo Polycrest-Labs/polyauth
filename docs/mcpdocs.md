@@ -48,6 +48,22 @@ library's built-in consent screen (auto-consented for the first-party UI client)
 for an `mcp.read` / `mcp.write` token at `/connect/token`, then calls `/mcp` with that bearer token;
 `MapMcp("/mcp").RequireAuthorization(AuthPolicies.McpRead)` enforces the scope.
 
+## MCP transport and protocol versions
+
+`AddPolyAuthMcp` uses the official C# MCP SDK 2.1 and explicitly configures stateless Streamable HTTP. Current
+`2026-07-28` clients use `server/discover` plus self-contained per-request metadata and do not create an MCP
+transport session. The SDK continues to accept older clients that use `initialize` and
+`notifications/initialized`.
+
+Every MCP POST is authenticated and authorized independently. No `Mcp-Session-Id` affinity is required, which
+allows requests from one client to be handled by different App Service instances. PolyAuth's MCP helper is
+therefore intended for tools and resources that do not rely on server-initiated MCP requests or transport-local
+session state.
+
+The current HTTP transport maps POST only. A host that also serves an SPA should add
+`app.MapFallback("mcp/{**slug}", () => Results.NotFound())` before its file fallback so GET `/mcp` cannot return
+the SPA shell with a misleading 200 response.
+
 ## Discovery / metadata endpoints (served by `UsePolyAuth`)
 - `/.well-known/oauth-authorization-server` (+ `/openid-configuration`) — OpenIddict AS metadata, plus the
   `…/mcp` aliases for MCP clients that probe the resource-scoped path.

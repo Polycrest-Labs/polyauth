@@ -131,6 +131,8 @@ app.MapGet("/config.json", (Microsoft.Extensions.Options.IOptions<ClientConfig> 
 // MCP endpoint, protected by the mcp.read policy.
 app.MapMcp("/mcp").RequireAuthorization(AuthPolicies.McpRead);
 
+// MCP 2026-07-28 uses POST only. Keep non-POST requests out of the SPA fallback.
+app.MapFallback("mcp/{**slug}", () => Results.NotFound());
 app.MapFallbackToFile("index.html");
 
 app.Run();

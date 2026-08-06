@@ -36,6 +36,7 @@ app.UsePolyAuth();
 app.MapControllers();
 app.MapPolyAuthEndpoints();                          // /connect/authorize, /connect/logout, /api/oauth/session
 app.MapMcp("/mcp").RequireAuthorization(AuthPolicies.McpRead);
+app.MapFallback("mcp/{**slug}", () => Results.NotFound()); // before an optional SPA fallback
 ```
 
 Protect controllers with the policies, and read the verified user id from the subject claim:
@@ -60,7 +61,7 @@ app-side pieces are: (1) your MCP tool classes (`[McpServerToolType]`), and (2) 
 | `AddPolyAuth(IConfiguration, Action<PolyAuthOptions>?)` | Binds the `PolyAuth` config section, applies the delegate, and wires authentication + authorization + OpenIddict + the token-exchange grant + the baseline MCP-client handlers — only for providers whose `Enabled` is true. |
 | `UsePolyAuth()` | Middleware in the correct order: OAuth discovery aliases → protected-resource metadata → MCP resource-metadata challenge → `UseAuthentication` → `UseAuthorization`. No-op for disabled providers. |
 | `MapPolyAuthEndpoints()` | Maps the library-owned interactive endpoints: `/connect/authorize` (+ default consent page), `/connect/logout`, and (when Firebase is enabled) the Firebase→session-cookie bridge `POST /api/oauth/session`. No-op when OAuth is disabled. |
-| `AddPolyAuthMcp(Action<IMcpServerBuilder>)` | `AddMcpServer().WithHttpTransport()` + a tool-error request filter; the app supplies tools/resources via the delegate. |
+| `AddPolyAuthMcp(Action<IMcpServerBuilder>)` | `AddMcpServer().WithHttpTransport(options => options.Stateless = true)` + a tool-error request filter; the app supplies tools/resources via the delegate. The MCP SDK accepts current `2026-07-28` clients and legacy initialize-based clients. |
 | `AuthScopes` | `api.read`, `api.write`, `mcp.read`, `mcp.write`. |
 | `AuthPolicies` | `ApiRead`, `ApiWrite`, `McpRead`, `McpWrite`, `FirebaseUser` (used with `[Authorize(Policy = …)]`). |
 | `AuthSchemes` | `Firebase`, `OAuthSession`, and the OpenIddict validation scheme. |
@@ -140,6 +141,20 @@ Only two things beyond the calls above:
 Everything else (authorize/consent/logout/session endpoints, discovery + MCP challenge, the grants, client
 seeding) is owned by the library.
 
+## MCP protocol compatibility
+
+PolyAuth uses the official C# MCP SDK 2.1 and explicitly runs Streamable HTTP in stateless mode. Current
+`2026-07-28` clients send self-contained requests, use `server/discover` for capability discovery, and do not
+create an MCP transport session. The SDK also accepts older clients that use the `initialize` handshake.
+
+Stateless transport is intentional: every request is authenticated and authorized independently, no
+`Mcp-Session-Id` affinity is required, and any App Service instance can handle the next request. Applications
+that require server-initiated MCP requests or legacy session state should register the MCP SDK directly and
+choose an appropriate stateful deployment instead of using `AddPolyAuthMcp`.
+
+The current HTTP transport uses POST only. If the host also serves an SPA, reserve `mcp/{**slug}` with a 404
+fallback before `MapFallbackToFile`; otherwise a browser GET to `/mcp` can incorrectly return the SPA shell.
+
 ## Deploy notes (Azure App Service)
 - **Forwarded headers** — App Service terminates TLS, so the app sees `http` unless you honor `X-Forwarded-Proto`.
   Call `app.UseForwardedHeaders(...)` (clearing `KnownProxies`/`KnownIPNetworks`) **before** `app.UsePolyAuth()`,
@@ -196,10 +211,9 @@ dotnet test PolyAuth.slnx
 ```
 
 Integration tests use `WebApplicationFactory<Program>` over `sample/web` with a stubbed Firebase verifier and a
-Mongo store (`POLYAUTH_TEST_MONGO`, default `mongodb://localhost:27017`). Current status: **25 unit + 13 integration
-tests pass**, covering token-exchange issuing a usable token, scope policies (403 on wrong scope / 200 on correct),
-`/mcp` returning 401 without a token and serving a scripted MCP `initialize` + `tools/list` with an `mcp.read` token,
-the discovery/metadata endpoints, the get-or-create provisioner, and the live RU store.
+Mongo store (`POLYAUTH_TEST_MONGO`, default `mongodb://localhost:27017`). They cover token exchange, scope policies,
+the protected `/mcp` endpoint, both current `server/discover` and legacy `initialize` MCP flows, structured tool
+results, the OAuth discovery/metadata endpoints, the get-or-create provisioner, and the live RU store.
 
 ## Distribution
 

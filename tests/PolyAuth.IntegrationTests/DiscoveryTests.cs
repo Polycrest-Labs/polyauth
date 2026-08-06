@@ -49,10 +49,20 @@ public sealed class DiscoveryTests : IClassFixture<PolyAuthWebFactory>
     public async Task Mcp_without_token_is_unauthorized_and_advertises_resource_metadata()
     {
         var client = _factory.CreateClient();
-        // A GET to /mcp without a token must be challenged.
-        var response = await client.GetAsync("/mcp");
+        using var content = new StringContent(
+            "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}",
+            System.Text.Encoding.UTF8,
+            "application/json");
+        var response = await client.PostAsync("/mcp", content);
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.True(response.Headers.Contains("WWW-Authenticate"));
         Assert.Contains("resource_metadata", string.Join(" ", response.Headers.GetValues("WWW-Authenticate")));
+    }
+
+    [Fact]
+    public async Task Mcp_get_does_not_fall_through_to_spa()
+    {
+        var response = await _factory.CreateClient().GetAsync("/mcp");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 }

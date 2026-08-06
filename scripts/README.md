@@ -15,7 +15,8 @@ python scripts/mcp_oauth_flow.py https://<web-app>.azurewebsites.net e2e@polyaut
 ```
 Drives the full flow against the live app: Firebase sign-in → `/api/oauth/session` cookie →
 `/connect/authorize` (PKCE + consent) → loopback redirect with code → `/connect/token`
-(authorization_code + PKCE) → MCP `initialize` + `tools/list` with the issued `mcp.read`/`mcp.write`
+(authorization_code + PKCE) → MCP `server/discover` + `tools/list` using the stateless `2026-07-28`
+protocol with the issued `mcp.read`/`mcp.write`
 token. Asserts the sample tools (`ping`, `list_items`) are listed.
 
 ## Browser / UI validation (Playwright)
